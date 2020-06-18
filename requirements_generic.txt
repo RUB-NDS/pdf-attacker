@@ -1,3 +1,4 @@
 notebook
 fpdf
 endesive
+pdf_annotate
