@@ -14,6 +14,7 @@ defusedxml==0.6.0
 docutils==0.16
 endesive==1.5.9
 entrypoints==0.3
+fonttools==4.12.1
 fpdf==1.7.2
 html5lib==1.0.1
 idna==2.8
@@ -36,13 +37,14 @@ more-itertools==8.0.2
 nbconvert==5.6.1
 nbformat==5.0.4
 notebook==6.0.3
-numpy==1.18.1
 oscrypto==1.2.0
 packaging==20.1
 pandocfilters==1.4.2
 paramiko==2.7.1
 parso==0.5.2
 path.py==12.0.1
+pdf-annotate==0.11.0
+pdfrw==0.4
 pexpect==4.7.0
 pickleshare==0.7.5
 Pillow==7.1.2
@@ -64,7 +66,6 @@ python-dateutil==2.8.1
 pytz==2020.1
 pyzmq==18.1.1
 requests==2.22.0
-scipy==1.4.1
 Send2Trash==1.5.0
 setuptools-scm==3.4.3
 singledispatch==3.4.0.3
@@ -75,6 +76,7 @@ tornado==5.1
 traitlets==4.3.3
 typed-ast==1.4.0
 urllib3==1.25.8
+Wand==0.6.1
 wcwidth==0.1.7
 webencodings==0.5.1
 wrapt==1.11.2
