@@ -1,16 +1,18 @@
-with import <nixpkgs> { };
+with import <nixpkgs> { config = { allowUnfree = true; }; };
 let
   my-python-packages = python-packages:
     with python-packages; [
       pylint
       notebook
+      pandas
+      rope
     ];
   my-python = python37.withPackages my-python-packages;
 in pkgs.mkShell {
   buildInputs = [
     pkgs.python37Packages.pip
     my-python
-    pkgs.vscodium # IDE
+    pkgs.vscode # IDE
     pkgs.swig # dependency for: endesive
     pkgs.openssl.dev # dependency for: endesive
     pkgs.imagemagickBig # dependency for: wand
