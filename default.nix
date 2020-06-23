@@ -18,7 +18,7 @@ in pkgs.mkShell {
     pkgs.imagemagickBig # dependency for: wand
   ];
   shellHook = ''
-    alias pip="PIP_PREFIX='$(pwd)/_build/pip_packages' \pip"
+    export PIP_PREFIX="$(pwd)/_build/pip_packages";
     export PYTHONPATH="$(pwd)/_build/pip_packages/lib/python3.7/site-packages:$PYTHONPATH" 
     unset SOURCE_DATE_EPOCH
   '';
