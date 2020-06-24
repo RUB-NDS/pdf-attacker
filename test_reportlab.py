@@ -1,4 +1,6 @@
 # %%
+pdf_form = "pdf/attack/form/form.pdf"
+# %%
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfform
 from reportlab.lib.colors import black, white, magenta
@@ -31,7 +33,14 @@ class MyAcroForm(AcroForm):
                 dashLen=3,
                 overlay=""
                 ):
-        from reportlab.pdfbase.acroform import AcroForm, annotationFlagValues
+        """
+        This function is a copy from reportlab.pdfbase.acroform.Acroform.
+
+        There is only one change:
+        We added a parameter `overlay`.
+        This parameter is then passed to the function `txAP(value=overlay)` as value instead of the original value.
+        """
+        from reportlab.pdfbase.acroform import AcroForm, annotationFlagValues, makeFlags, fieldFlagValues
         from reportlab.lib.utils import isStr
         from reportlab.pdfbase.pdfdoc import PDFString, PDFName, PDFArray, PDFDictionary
 
@@ -167,25 +176,42 @@ class MyAcroForm(AcroForm):
         self.fields.append(self.getRef(TF))
         self.checkForceBorder(x,y,width,height,forceBorder,'square',borderStyle,borderWidth,borderColor,fillColor)
 
+    def textfield(self,name,y,value,tooltip,overlay):
+        self._textfield(
+                name=name,
+                value=value,
+                tooltip=tooltip,
+                overlay=overlay,
+                y=y,
+                x=220, width=300, height=20,
+                textColor=black,
+                borderColor=white, borderWidth=0,
+                forceBorder=False,
+                wkind='textfield'
+        )
+
 c = canvas.Canvas(
-    filename='pdf/attack/form/simple_form.pdf',
+    filename=pdf_form,
     pageCompression=False
 )
 
-#form = c.acroForm
 form = MyAcroForm(c)
+# Example based on:
+# https://www.blog.pythonlibrary.org/2018/05/29/creating-interactive-pdf-forms-in-reportlab-with-python/
 
-c.drawString(10, 650, 'First Name:')
-form._textfield(name='fname', tooltip='First Name',
-                x=110, y=635, width=300, height=20,
-                value="First Name Value",
-                overlay="Attacker Value",
-                textColor=black,
-                borderColor=white, borderWidth=0,
-                fillColor=white,
-                forceBorder=False,
-                wkind='textfield'
-                )
+c.drawCentredString(300,700, "Donation Sender")
+c.drawString(50, 650, 'Sender Name:')
+form.textfield(name='sendername', y=645, value="Your Name", tooltip='Sender Name', overlay="Your Name",)
+c.drawString(50, 600, 'Sender Bank Account:')
+form.textfield(name='senderaccount', y=595, value="Your Account", tooltip='Sender Bank Account', overlay="Your Account",)
+c.drawString(50, 550, 'Amount:')
+form.textfield(name='amount', y=545, value="10 USD", tooltip='Amount', overlay="10 USD",)
+c.drawCentredString(300,500, "Donation Recipient")
+c.drawString(50, 450, 'Recipient Name:')
+form.textfield(name='recipientname', y=445, value="Attacker", tooltip='Recipient Name', overlay="UNICEF",)
+c.drawString(50, 400, 'Sender Bank Account:')
+form.textfield(name='recipientaccount', y=395, value="666666666", tooltip='Sender Bank Account', overlay="123456789")
+
 
 c.save()
 
