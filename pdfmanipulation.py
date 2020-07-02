@@ -389,23 +389,25 @@ def getTrailer(pdfbytes):
 
     # New trailer parsing: now parse every know trailer key from ISO 32000
     search  = "(?<=[\n\r])trailer" # begin trailer sequence
-    search += "\s+<<\s*" # Opening sequence for dictionary
+    search += "[\n\r\s]*<<[\n\r\s]*" # Opening sequence for dictionary
     search += "(?P<trailerdict>"
     search += "(?:(?:" # <trailerkey>, e.g. /Root, /ID, /Size, /Prev. Can be followed by whitespaces, so we use double bracket
     # The following for key/value pair search regex are similar, only differ in allowed names
     # Each entry ends with either \r or \n or / (Slash, belonging to next key)
-    search += "(?P<rootentry>\/Root\s+(?P<root>\d+\s+\d+\s+\w))"
+    search += "(?P<rootentry>\/Root\s+(?P<root>\d+\s+\d+\s+R))"
     search += "|"
-    search += "(?P<infoentry>\/Info\s+(?P<info>\d+\s+\d+\s+\w))"
+    search += "(?P<infoentry>\/Info\s+(?P<info>\d+\s+\d+\s+R))"
     search += "|"
-    search += "(?P<identry>\/ID\s+(?P<id>\[[^\]]*\]))"
+    search += "(?P<identry>\/ID\s*(?P<id>\[[^\]]*\]))"
     search += "|"
     search += "(?P<sizenentry>\/Size\s+(?P<size>\d+))"
     search += "|"
     search += "(?P<prevnentry>\/Prev\s+(?P<prev>\d+))"
-    search += ")\s+)+" # </key>\s+ --> can occur multiple times (second +)
+    search += "|"
+    search += "(?P<comment>[\n\r]%[^\n\r]+)" # Comments are also possible
+    search += ")[\n\r\s]*)+" # </key>\s+ --> can occur multiple times (second +)
     search += ")" # </trailerdict>
-    search += "\s*>>\s*" # Closing sequence for dicitonary
+    search += "[\n\r\s]*>>[\n\r\s]*" # Closing sequence for dicitonary
     search += "(?=startxref)" # end trailer sequence
 
     pattern = re.compile(search.encode(), re.MULTILINE | re.DOTALL)
