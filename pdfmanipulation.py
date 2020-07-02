@@ -364,11 +364,11 @@ def getContents(pdfbytes):
 def getXref(pdfbytes):
     """returns a list of xref tables."""
     search = "(?<=[\n\r])"             # Lookahead for newline
-    search += "xref[\n\r]"             # xref must be in a single line
+    search += "xref[\n\r]+"            # xref must be in a single line
     search += "(?:"                    # Matching multple times (1/2)
     search += "(\d+\s+\d+"             # Either we have something like '0 8'
     search += "|\d{10}\s+\d{5}\s+[nf]" # Or we have something like '0000000015 00000 n'
-    search += ")[\n\r]+"               # Followed by newline
+    search += ")\s?[\n\r]+"            # Followed by possible whitespace and newline
     search += ")+"                     # Matching multple times (2/2)
     pattern = re.compile(search.encode(), re.MULTILINE | re.DOTALL)
     return list(pattern.finditer(pdfbytes))
