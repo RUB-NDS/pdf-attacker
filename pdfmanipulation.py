@@ -71,6 +71,36 @@ def getDictionariesWithKey(pdfbytes, key):
             dictionaries.append(list(pattern_2.finditer(x.group(0)))[0])
     return dictionaries
 
+def getObjectByNeedle(pdfbytes, needle):
+    """
+    Returns a list of re.match objects that match needle.
+    E.g. set 
+    needle = '/V \(Attacker\)'
+    Since needle is compiled as a regex, brackets must be escaped.
+    The result matches contain
+    match.group('objnr')
+    match.group('gennr')
+    match.group('needle')
+    """
+    search = "(?<=[\n\r])\d+\s+\d+\s+obj"
+    search += ".*?"
+    search += "[\n\r]+endobj"
+    objpattern = re.compile(search.encode(), re.MULTILINE | re.DOTALL)
+
+    n = "(?P<objnr>\d+)\s+(?P<gennr>\d+)\s+obj"
+    n += f".*(?P<needle>{needle}).*"
+    #n += ".*"
+    n += "[\n\r]+endobj"
+
+    needlepattern = re.compile(n.encode(), re.MULTILINE | re.DOTALL)
+    result = list()
+    for obj in objpattern.finditer(pdfbytes):
+        match = needlepattern.match(pdfbytes, obj.start(), obj.end())
+        if match:
+            result.append(match)
+    return result
+
+
 def getObjectByReference(pdfbytes, object_number, generation_number):
     """Returns a list of re.match objects. Each object contains the start() and end() offset as well as the content within different groups. group(0) = whole object; group(1) = object number; group(2) = generation_number."""
     search = "(?<=\s)(%d)\s+(%d\sobj).*?endobj" % (object_number, generation_number)
