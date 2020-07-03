@@ -140,3 +140,4 @@ dmypy.json
 Thumbs.db
 *.pdf
 .vscode/settings.json
+shadow-attack/hide/image/visible.png
