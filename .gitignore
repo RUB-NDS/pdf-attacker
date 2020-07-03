@@ -139,6 +139,4 @@ dmypy.json
 # End of https://www.toptal.com/developers/gitignore/api/python
 Thumbs.db
 *.pdf
-pdf/visible.png
-_build/
 .vscode/settings.json

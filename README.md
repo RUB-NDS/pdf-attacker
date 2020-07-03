@@ -6,29 +6,27 @@ Go to Extension by pressing `ctrl+shift+x` and search for *Remote - Containers* 
 Install this extension.
 In the bottom left, you can click to *reopen in container*
 
-## NixOS user
+If you are asked for a Python interpreter, choose `python 3.8`.
 
-```
-nix-shell --pure
-pip install -r requirements.txt
-```
+# How to create attacks?
 
-## Other Distros
+Each attack is located in a subfolder of the `shadow_attack` directory.
+You will find three subdirectories:
 
-```
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
+1. hide
+2. replace
+3. hide-and-replace
 
-You mabe need the following tools: (see `default.nix`):
-- `vscode`: IDE
-- `swig`: dependency for endesive
-- `openssl` + headers: dependency for endesive
-- `imagemagick` + headers (`imagemagick-dev`) dependency for: python wand
+Each folder has one or more variants of the respective attack class.
 
-# How to create Attacks?
+You can simply open the contained `*.ipynb` Jupyter notebook and follow the instructions contained therein.
 
-## Hidden Attack (Image Variant)
-- Open `play_shadow_hidden_attack.ipynb` in VSCode.
-- Follow the instructions
+# What is in the other directories?
+
+## pdf-detector
+
+You can find a detector for shadow attacks in this directory
+
+## lib / fonts / signer
+
+These directories are used by the shadow attacks.
