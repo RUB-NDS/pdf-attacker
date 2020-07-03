@@ -5,13 +5,13 @@ let
       pylint
       notebook
       pandas
-      rope
     ];
-  my-python = python37.withPackages my-python-packages;
+  my-python = python38.withPackages my-python-packages;
 in pkgs.mkShell {
   buildInputs = [
-    pkgs.python37Packages.pip
+    pkgs.python38Packages.pip
     my-python
+    pkgs.git
     pkgs.vscode # IDE
     pkgs.swig # dependency for: endesive
     pkgs.openssl.dev # dependency for: endesive
