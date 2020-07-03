@@ -141,3 +141,4 @@ Thumbs.db
 *.pdf
 pdf/visible.png
 _build/
+.vscode/settings.json
