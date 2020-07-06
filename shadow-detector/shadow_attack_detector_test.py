@@ -8,7 +8,8 @@ class Test_ShadowAttackDetector(unittest.TestCase):
 
     def test_shadow_hide_and_hide_replace_detector(self):
         self.assertEqual(shadow_hide_and_hide_replace_detector("./shadow-demo-exploits/hide/xref_image/hide-from-shadowed-signed.pdf"), 0)
-        self.assertEqual(shadow_hide_and_hide_replace_detector("./shadow-demo-exploits/hide/xref_image/hide-from-shadowed-signed-manipulated.pdf"), 1)
+        self.assertEqual(shadow_hide_and_hide_replace_detector("./shadow-demo-exploits/hide/xref_image/hide-from-shadowed-signed-manipulated_v1.pdf"), 1)
+        self.assertEqual(shadow_hide_and_hide_replace_detector("./shadow-demo-exploits/hide/xref_image/hide-from-shadowed-signed-manipulated_v2.pdf"), 1)
 
     def test_shadow_hide_preventor(self):
         self.assertEqual(shadow_hide_preventor("./shadow-demo-exploits/hide/xref_image/hide-from-shadowed.pdf"), 1)
