@@ -141,3 +141,15 @@ Thumbs.db
 # *.pdf
 .vscode/settings.json
 shadow-attack/hide/image/visible.png
+shadow-attack/hide/form/hide-from-shadowed-signed-manipulated.pdf
+shadow-attack/hide/form/hide-from-shadowed-signed.pdf
+shadow-attack/hide/form/hide-from-shadowed.pdf
+shadow-attack/hide/form_and_text/form_over_text-signed-manipulated.pdf
+shadow-attack/hide/form_and_text/form_over_text-signed.pdf
+shadow-attack/hide/form_and_text/form_over_text.pdf
+shadow-attack/hide/xref_image/hide-from-shadowed-signed-manipulated_v1.pdf
+shadow-attack/hide/xref_image/hide-from-shadowed-signed-manipulated_v2.pdf
+shadow-attack/hide/xref_image/hide-from-shadowed-signed.pdf
+shadow-attack/hide/xref_image/hide-from-shadowed.pdf
+shadow-attack/hide/xref_image/overlay.pdf
+shadow-attack/hide/xref_image/overlay.png
