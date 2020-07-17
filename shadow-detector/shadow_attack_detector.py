@@ -1,13 +1,17 @@
 import os
 import sys
 import time
+import re
 
 from pdfminer.layout import LAParams
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import PDFPageAggregator
 from pdfminer.pdfpage import PDFPage
-from pdfminer.layout import LTFigure, LTText, LTTextBox, LTTextBoxVertical, LTTextBoxHorizontal
-
+from pdfminer.layout import LTFigure, LTText, LTTextBox, LTTextBoxVertical, LTTextBoxHorizontal, LTTextLine
+from pdfminer.pdfparser import PDFParser
+from pdfminer.psparser import PSLiteral
+from pdfminer.pdfdocument import PDFDocument
+from pdfminer.pdftypes import resolve1
 
 def shadow_hide_preventor(document):
     warnings = 0
@@ -141,6 +145,133 @@ def shadow_hide_and_hide_replace_detector(document):
 
     return warnings;
 
+def shadow_replace_font_detector(document):
+    warnings = 0
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+    
+    #Get byte value of first signature
+    tmp = content_str_lower.find("/type/sig")
+    if (tmp > 0):
+        index_of_first_sig = tmp
+    else:
+        index_of_first_sig = content_str_lower.find("/type /sig")
+    
+    #Get byte value of EOFs.
+    i = 0
+    index_of_eof = [content_str.find("%%EOF")+6]    
+    if(index_of_eof[0] > 0):
+        while(True):
+            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
+            if(tmp > 0):
+                index_of_eof.append(tmp+6)
+                i+=1
+            else:
+                break
+    
+    if (i == 0):
+        print("Error while capturing the EOF byte values!")
+        return warnings;
+
+    #Get byte value EOF after signature
+    index_of_sig_eof = 0
+    i = 0
+    for byte_value in index_of_eof:
+        if (byte_value > index_of_first_sig):
+            index_of_sig_eof = index_of_eof[i]
+            break
+        i+=1
+
+    #Get byte value of FontFile.
+    i = 0
+    index_of_fontfile = [content_str_lower.find("fontfile")] 
+    if(index_of_fontfile[0] > 0):
+        while(True):
+            tmp = content_str_lower.find("fontfile", index_of_fontfile[i]+8)
+            if(tmp > index_of_sig_eof):
+                break
+            elif(tmp > 0):
+                index_of_fontfile.append(tmp)
+                i+=1
+            else:
+                break
+
+    if (index_of_fontfile[0] < 0):
+        print("No font files found in the document!")
+        return warnings;
+
+    #Get FontFile Object Number
+    object_number_fontfile = []
+    for byte_value in index_of_fontfile:
+        tmp = content_str_lower[byte_value:byte_value+15].split()
+        object_number_fontfile.append(tmp[1])
+
+    
+    #Search for FontFiles after signature
+    for object_number in object_number_fontfile:
+        if(content_str_lower.find(str(object_number)+" 0 obj", index_of_sig_eof) > 0):
+            print('WARNING! FontFile: ' + str(object_number)+' 0 obj was added after signing!')
+            warnings += 1
+
+    return warnings;
+
+def shadow_replace_font_detector2(document):
+    warnings = 0
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+    
+    #Get byte value of first signature
+    tmp = content_str_lower.find("/type/sig")
+    if (tmp > 0):
+        index_of_first_sig = tmp
+    else:
+        index_of_first_sig = content_str_lower.find("/type /sig")
+    
+    #Get byte value of EOFs.
+    i = 0
+    index_of_eof = [content_str.find("%%EOF")+6]    
+    if(index_of_eof[0] > 0):
+        while(True):
+            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
+            if(tmp > 0):
+                index_of_eof.append(tmp+6)
+                i+=1
+            else:
+                break
+    
+    if (i == 0):
+        print("Error while capturing the EOF byte values!")
+        return warnings;
+
+    #Get byte value of signature-EOF 
+    index_of_sig_eof = 0
+    i = 0
+    for byte_value in index_of_eof:
+        if (byte_value > index_of_first_sig):
+            index_of_sig_eof = index_of_eof[i-1]
+            break
+        i+=1
+
+    #Get object number from font in initial document
+    index_of_font_start = [content_str_lower.find(" 0 obj")-4]
+    tmp = content_str_lower[index_of_font_start[0]:(index_of_font_start[0]+4)]
+    object0_number = [int(i) for i in tmp.split() if i.isdigit()]
+    print("object0_number")
+    print(object0_number)
+    index_of_font_end = [content_str.find("endobj"), index_of_font_start[0]]
+    print(index_of_font_end)
+    #object0 = content_str[0: index_of_font_start:] + content_str[index_of_eof[-1] + 1::]
+
+    return warnings;
+
 def compare_files(document0, document1):
     warnings = 0
     file0 = open(document0, 'rb')
@@ -184,7 +315,7 @@ def compare_files(document0, document1):
                     if (s0 == s1):
                         check = 1
             if (check == 0):
-                print('WARNING! Object added from document after signing:\n' + s0)
+                print('WARNING! Object added to document after signing:\n' + s0)
                 warnings+=1
     
     for page1 in PDFPage.get_pages(file1):
@@ -237,6 +368,28 @@ def check_sig_state(document):
     
     return sig_state
 
+def show_elements(document):
+    warnings = 0
+    file = open(document, 'rb')
+
+    parser = PDFParser(file)
+    doc = PDFDocument(parser)
+    rsrcmgr = PDFResourceManager()
+    laparams = LAParams()
+    device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+    text = ''
+    for page in PDFPage.create_pages(doc):
+        interpreter.process_page(page)
+        layout = device.get_result()
+        for lt_obj in layout:
+            if isinstance(lt_obj, LTTextBox) or isinstance(lt_obj, LTTextLine):
+                text += lt_obj.get_text()
+    print(text) 
+
+
+    return warnings;
+
 #Start
 #Check arguments
 if(len(sys.argv) < 2):
@@ -246,6 +399,8 @@ elif not(str(sys.argv[1]).endswith('.pdf')):
 else:
     document = str(sys.argv[1])
     
+    show_elements(document)
+
     if(check_sig_state(document) > 0):
         #Detector
         print("PDF File contains signatures.")
@@ -253,9 +408,16 @@ else:
         #Call detector for category Hide and Replace
         warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
         if (warnings_dec_hide_and_replace == 0):
-            print('\nCheck complete: no Shadow Attacks in category "Hide" and/or "Hide and Replace" detected.')
+            print('Check complete: no Shadow Attacks in category "Hide" and/or "Hide and Replace" detected.\n')
         else:
-            print('\nCheck complete: WARNING! ' + str(warnings_dec_hide_and_replace) + ' Shadow Attack(s) in category "Hide" and/or "Hide and Replace" detected.')
+            print('Check complete: WARNING! ' + str(warnings_dec_hide_and_replace) + ' Shadow Attack(s) in category "Hide" and/or "Hide and Replace" detected.\n')
+        
+        #Call detector for category Replace
+        warnings_dec_replace_font = shadow_replace_font_detector(document)
+        if (warnings_dec_replace_font == 0):
+            print('Check complete: no Shadow Attacks in category "Replace" detected.\n')
+        else:
+            print('Check complete: WARNING! ' + str(warnings_dec_replace_font) + ' Shadow Attack(s) in category "Replace" detected.\n')
 
     else:
         #Preventor
