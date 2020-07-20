@@ -84,6 +84,88 @@ def shadow_hide_preventor(document):
     file.close()
     return warnings;
 
+def shadow_hide_replace_preventor(document):
+    warnings = 0
+
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+
+    #Get byte value of Pages object.
+    i = 0
+    index_of_pages = [content_str_lower.find("/type /pages")]    
+    if(index_of_pages[0] > 0):
+        while(True):
+            tmp = content_str_lower.find("/type /pages", index_of_pages[i]+6)
+            if(tmp > 0):
+                index_of_pages.append(tmp)
+                i+=1
+            else:
+                break
+    else:
+        print("Error: no Pages object found.")
+        return warnings;
+
+    #Get byte value of endobj of Pages object
+    #Get content of Pages object
+    #Get index of Kids element
+    index_of_pages_end = []
+    content_of_pages = []
+    index_of_kids = []
+    i = 0
+    for byte_value in index_of_pages:
+        tmp = content_str_lower.find("endobj", byte_value)
+        index_of_pages_end.append(tmp)
+        tmp = content_str_lower[byte_value:index_of_pages_end[i]]
+        content_of_pages.append(tmp)
+        tmp = content_str_lower.find("/kids", byte_value, index_of_pages_end[i])
+        index_of_kids.append(tmp)
+        i+=1
+
+    #Get byte value of newline of Kids element
+    #Get content of Kids element
+    index_of_kids_end = []
+    content_of_kids= []
+    i = 0
+    for byte_value in index_of_kids:
+        tmp = content_str_lower.find('\n', byte_value)
+        index_of_kids_end.append(tmp)
+        tmp = content_str[byte_value:index_of_kids_end[i]]
+        content_of_kids.append(tmp)
+        i+=1
+
+    #Replace referenced content objects
+    
+    i = 0
+    for byte_value in index_of_kids:
+        #Check if kids element is not empty
+        object_number_kids = re.findall('[0-9]+', content_of_kids[i])
+        if(len(object_number_kids) > 1):
+            j = 0
+            for byte_value2 in index_of_kids:
+                if(byte_value != byte_value2):
+                    object_number_kids = re.findall('[0-9]+', content_of_kids[j])
+                    if(len(object_number_kids) > 1):
+                        content_str_replaced = content_str[:byte_value] + content_of_kids[j] + content_str[index_of_kids_end[i]:]
+                        content_str_replaced = content_str_replaced[:byte_value2] + content_of_kids[i] + content_str_replaced[index_of_kids_end[j]:]
+                        content_encoded = content_str_replaced.encode("iso-8859-1")
+                        
+                        tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + ".pdf"
+                        tmpfile = open(tmpfile_str, "xb")
+                        tmpfile.write(content_encoded)
+                        tmpfile.close()
+
+                        warnings = compare_files_prevent(document, tmpfile_str)
+                        if os.path.exists(tmpfile_str):
+                            os.remove(tmpfile_str)
+                j+=1
+        i+=1
+
+    return warnings;
+
 def shadow_hide_and_hide_replace_detector(document):
     warnings = 0
 
@@ -219,59 +301,6 @@ def shadow_replace_font_detector(document):
 
     return warnings;
 
-def shadow_replace_font_detector2(document):
-    warnings = 0
-    file = open(document, 'rb')
-    content_encoded = file.read()
-    file.close()
-    content = content_encoded.decode("iso-8859-1")
-    content_str = str(content)
-    content_str_lower = content_str.lower()
-    
-    #Get byte value of first signature
-    tmp = content_str_lower.find("/type/sig")
-    if (tmp > 0):
-        index_of_first_sig = tmp
-    else:
-        index_of_first_sig = content_str_lower.find("/type /sig")
-    
-    #Get byte value of EOFs.
-    i = 0
-    index_of_eof = [content_str.find("%%EOF")+6]    
-    if(index_of_eof[0] > 0):
-        while(True):
-            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
-            if(tmp > 0):
-                index_of_eof.append(tmp+6)
-                i+=1
-            else:
-                break
-    
-    if (i == 0):
-        print("Error while capturing the EOF byte values!")
-        return warnings;
-
-    #Get byte value of signature-EOF 
-    index_of_sig_eof = 0
-    i = 0
-    for byte_value in index_of_eof:
-        if (byte_value > index_of_first_sig):
-            index_of_sig_eof = index_of_eof[i-1]
-            break
-        i+=1
-
-    #Get object number from font in initial document
-    index_of_font_start = [content_str_lower.find(" 0 obj")-4]
-    tmp = content_str_lower[index_of_font_start[0]:(index_of_font_start[0]+4)]
-    object0_number = [int(i) for i in tmp.split() if i.isdigit()]
-    print("object0_number")
-    print(object0_number)
-    index_of_font_end = [content_str.find("endobj"), index_of_font_start[0]]
-    print(index_of_font_end)
-    #object0 = content_str[0: index_of_font_start:] + content_str[index_of_eof[-1] + 1::]
-
-    return warnings;
-
 def compare_files(document0, document1):
     warnings = 0
     file0 = open(document0, 'rb')
@@ -352,6 +381,51 @@ def compare_files(document0, document1):
     file1.close()
     return warnings;
 
+def compare_files_prevent(document0, document1):
+    warnings = 0
+    file0 = open(document1, 'rb')
+
+    file1 = open(document0, 'rb')
+
+    #Create resource manager
+    rsrcmgr0 = PDFResourceManager()
+    rsrcmgr1 = PDFResourceManager()
+    #Set parameters for analysis.
+    laparams0 = LAParams()
+    laparams1 = LAParams()
+    #Create a PDF page aggregator object.
+    device0 = PDFPageAggregator(rsrcmgr0, laparams=laparams0)
+    device1 = PDFPageAggregator(rsrcmgr1, laparams=laparams1)
+    interpreter0 = PDFPageInterpreter(rsrcmgr0, device0)
+    interpreter1 = PDFPageInterpreter(rsrcmgr1, device1)
+
+    for page0 in PDFPage.get_pages(file0):
+        interpreter0.process_page(page0)  
+        #Receive the LTPage object for the page.
+        layout0 = device0.get_result()
+
+        #Search for elements in pdf
+        for element0 in layout0:      
+            s0 = str(element0)
+            check = 0
+            #Search for element in pdf
+            for page1 in PDFPage.get_pages(file1):
+
+                interpreter1.process_page(page1)  
+                #Receive the LTPage object for the page.
+                layout1 = device1.get_result()
+                for element1 in layout1:
+                    s1 = str(element1)
+                    if (s0 == s1):
+                        check = 1
+            if (check == 0):
+                print('WARNING! Document contains hidden content :\n' + s0)
+                warnings+=1
+
+    file0.close()
+    file1.close()
+    return warnings;
+
 def check_sig_state(document):
     sig_state = 0
     file = open(document, 'rb')
@@ -405,7 +479,7 @@ else:
         #Detector
         print("PDF File contains signatures.")
         print("Start Detection-Mode.")
-        #Call detector for category Hide and Replace
+        #Call detector for category Hide and Hide-and-Replace
         warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
         if (warnings_dec_hide_and_replace == 0):
             print('Check complete: no Shadow Attacks in category "Hide" and/or "Hide and Replace" detected.\n')
@@ -425,11 +499,17 @@ else:
         print("Start Prevention-Mode.")
         #Call preventor for category Hide
         warnings_pre_hide = shadow_hide_preventor(document)
-
         if (warnings_pre_hide == 0):
             print('\nCheck complete: no Shadow Attacks in category "Hide" detected.')
         else:
             print('\nCheck complete: WARNING! ' + str(warnings_pre_hide) + ' Shadow Attack(s) in category "Hide" detected.')
+
+        #Call preventor for category Hide-and-Replace
+        warnings_pre_hide_replace = shadow_hide_replace_preventor(document)
+        if (warnings_pre_hide_replace == 0):
+            print('\nCheck complete: no Shadow Attacks in category "Hide and Replace" detected.')
+        else:
+            print('\nCheck complete: WARNING! ' + str(warnings_pre_hide_replace) + ' Shadow Attack(s) in category "Hide and Replace" detected.')
 
 
 
