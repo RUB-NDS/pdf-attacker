@@ -13,6 +13,8 @@ from pdfminer.psparser import PSLiteral
 from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdftypes import resolve1
 
+from pdfrw import PdfReader
+
 def shadow_hide_preventor(document):
     warnings = 0
     file = open(document, 'rb')
@@ -138,7 +140,6 @@ def shadow_hide_replace_preventor(document):
         i+=1
 
     #Replace referenced content objects
-    
     i = 0
     for byte_value in index_of_kids:
         #Check if kids element is not empty
@@ -153,11 +154,13 @@ def shadow_hide_replace_preventor(document):
                         content_str_replaced = content_str_replaced[:byte_value2] + content_of_kids[i] + content_str_replaced[index_of_kids_end[j]:]
                         content_encoded = content_str_replaced.encode("iso-8859-1")
                         
+                        #Create test file
                         tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + ".pdf"
                         tmpfile = open(tmpfile_str, "xb")
                         tmpfile.write(content_encoded)
                         tmpfile.close()
 
+                        #Compare initial document and test file
                         warnings = compare_files_prevent(document, tmpfile_str)
                         if os.path.exists(tmpfile_str):
                             os.remove(tmpfile_str)
@@ -283,7 +286,7 @@ def shadow_replace_font_detector(document):
                 break
 
     if (index_of_fontfile[0] < 0):
-        print("No font files found in the document!")
+        print("No font files found in the document.")
         return warnings;
 
     #Get FontFile Object Number
@@ -301,6 +304,66 @@ def shadow_replace_font_detector(document):
 
     return warnings;
 
+def shadow_replace_form_detector(document):
+    warnings = 0
+
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+    
+    #Get byte value of first signature
+    tmp = content_str_lower.find("/type/sig")
+    if (tmp > 0):
+        index_of_first_sig = tmp
+    else:
+        index_of_first_sig = content_str_lower.find("/type /sig")
+
+    #Get byte value of EOFs.
+    i = 0
+    index_of_eof = [content_str.find("%%EOF")+6]    
+    if(index_of_eof[0] > 0):
+        while(True):
+            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
+            if(tmp > 0):
+                index_of_eof.append(tmp+6)
+                i+=1
+            else:
+                break
+    
+    if (i == 0):
+        print("Error while capturing the EOF byte values!")
+        return warnings;
+
+    #Get byte value of signature-EOF 
+    index_of_sig_eof = 0
+    i = 0
+    for byte_value in index_of_eof:
+        if (byte_value > index_of_first_sig):
+            index_of_sig_eof = index_of_eof[i-1]
+            break
+        i+=1
+    
+    #Remove incremental updates
+    if(len(content_str) >= index_of_eof[-1]):
+        content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
+    
+    content_encoded = content_str_no_updates.encode("iso-8859-1")
+
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + ".pdf"
+    tmpfile = open(tmpfile_str, "xb")
+    tmpfile.write(content_encoded)
+    tmpfile.close()
+
+
+    warnings = compare_files_detection_replace_value(document, tmpfile_str)
+    if os.path.exists(tmpfile_str):
+        os.remove(tmpfile_str)
+
+    return warnings;
+    
 def compare_files(document0, document1):
     warnings = 0
     file0 = open(document0, 'rb')
@@ -426,6 +489,38 @@ def compare_files_prevent(document0, document1):
     file1.close()
     return warnings;
 
+def compare_files_detection_replace_value(document0, document1):
+    warnings = 0
+    doc0 = PdfReader(document0)
+    doc1 = PdfReader(document1)
+
+    for page0 in doc0.Root.Pages.Kids:
+        for annot0 in page0.Annots:
+            #Ignore signature field
+            title = annot0.T.lower()
+            if(title.find("signature") == -1):
+                value0 = annot0.AP.N.stream
+                index_value0_start = value0.find(" Tf")
+                index_value0_end = value0.find(") Tj")
+                string_value0 = value0[index_value0_start+5:index_value0_end]
+                check = 0
+                for page1 in doc1.Root.Pages.Kids:
+                    for annot1 in page1.Annots:
+                        #Ignore signature field
+                        title = annot1.T.lower()
+                        if(title.find("signature") == -1):
+                            value1 = annot1.AP.N.stream
+                            index_value1_start = value1.find(" Tf")
+                            index_value1_end = value1.find(") Tj")
+                            string_value1 = value1[index_value1_start+5:index_value1_end]
+                            if(value0 == value1):
+                                check = 1
+                if(check == 0):
+                    print('WARNING! Form text: "' + string_value1 + '" replaced by text: "' + string_value0 + '"')
+                    warnings+=1
+
+    return warnings;
+
 def check_sig_state(document):
     sig_state = 0
     file = open(document, 'rb')
@@ -473,7 +568,7 @@ elif not(str(sys.argv[1]).endswith('.pdf')):
 else:
     document = str(sys.argv[1])
     
-    show_elements(document)
+    #show_elements(document)
 
     if(check_sig_state(document) > 0):
         #Detector
@@ -488,10 +583,13 @@ else:
         
         #Call detector for category Replace
         warnings_dec_replace_font = shadow_replace_font_detector(document)
-        if (warnings_dec_replace_font == 0):
+        warnings_dec_replace_form = shadow_replace_form_detector(document)
+
+        warnings_replace = warnings_dec_replace_font + warnings_dec_replace_form
+        if (warnings_replace == 0):
             print('Check complete: no Shadow Attacks in category "Replace" detected.\n')
         else:
-            print('Check complete: WARNING! ' + str(warnings_dec_replace_font) + ' Shadow Attack(s) in category "Replace" detected.\n')
+            print('Check complete: WARNING! ' + str(warnings_replace) + ' Shadow Attack(s) in category "Replace" detected.\n')
 
     else:
         #Preventor
@@ -512,7 +610,7 @@ else:
             print('\nCheck complete: WARNING! ' + str(warnings_pre_hide_replace) + ' Shadow Attack(s) in category "Hide and Replace" detected.')
 
 
-
+   
 
 
 
