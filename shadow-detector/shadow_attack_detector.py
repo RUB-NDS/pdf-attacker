@@ -3,6 +3,9 @@ import sys
 import time
 import re
 
+import pypdftk
+
+
 from pdfminer.layout import LAParams
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
 from pdfminer.converter import PDFPageAggregator
@@ -14,6 +17,8 @@ from pdfminer.pdfdocument import PDFDocument
 from pdfminer.pdftypes import resolve1
 
 from pdfrw import PdfReader
+
+from random import *
 
 def shadow_hide_preventor(document):
     warnings = 0
@@ -218,7 +223,8 @@ def shadow_hide_and_hide_replace_detector(document):
     
     content_encoded = content_str_no_updates.encode("iso-8859-1")
 
-    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + ".pdf"
+    rand = str(randint(1, 9999))
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
     tmpfile = open(tmpfile_str, "xb")
     tmpfile.write(content_encoded)
     tmpfile.close()
@@ -352,7 +358,70 @@ def shadow_replace_form_detector(document):
     
     content_encoded = content_str_no_updates.encode("iso-8859-1")
 
-    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + ".pdf"
+    rand = str(randint(1, 9999))
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand +".pdf"
+    tmpfile = open(tmpfile_str, "xb")
+    tmpfile.write(content_encoded)
+    tmpfile.close()
+
+    warnings = compare_files_detection_replace_value(document, tmpfile_str)
+    if os.path.exists(tmpfile_str):
+        os.remove(tmpfile_str)
+
+    return warnings;
+
+def shadow_replace_form_overlay_detector(document):
+    warnings = 0
+
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+    
+    #Get byte value of first signature
+    tmp = content_str_lower.find("/type/sig")
+    if (tmp > 0):
+        index_of_first_sig = tmp
+    else:
+        index_of_first_sig = content_str_lower.find("/type /sig")
+
+    #Get byte value of EOFs.
+    i = 0
+    index_of_eof = [content_str.find("%%EOF")+6]    
+    if(index_of_eof[0] > 0):
+        while(True):
+            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
+            if(tmp > 0):
+                index_of_eof.append(tmp+6)
+                i+=1
+            else:
+                break
+    
+    if (i == 0):
+        print("Error while capturing the EOF byte values!")
+        return warnings;
+
+    #Get byte value of signature-EOF 
+    index_of_sig_eof = 0
+    i = 0
+    for byte_value in index_of_eof:
+        if (byte_value > index_of_first_sig):
+            index_of_sig_eof = index_of_eof[i-1]
+            break
+        i+=1
+    
+    #Remove incremental updates
+    if(len(content_str) >= index_of_eof[-1]):
+        content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
+    
+    content_encoded = content_str_no_updates.encode("iso-8859-1")
+
+    
+ 
+    rand = str(randint(1, 9999))
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
     tmpfile = open(tmpfile_str, "xb")
     tmpfile.write(content_encoded)
     tmpfile.close()
@@ -362,8 +431,8 @@ def shadow_replace_form_detector(document):
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
 
-    return warnings;
-    
+    return warnings;    
+
 def compare_files(document0, document1):
     warnings = 0
     file0 = open(document0, 'rb')
@@ -491,33 +560,125 @@ def compare_files_prevent(document0, document1):
 
 def compare_files_detection_replace_value(document0, document1):
     warnings = 0
-    doc0 = PdfReader(document0)
-    doc1 = PdfReader(document1)
+
+    try:
+        doc0_path = document0
+        doc0 = PdfReader(doc0_path)
+        check0 = 0
+    except:
+        doc0_path = decompress_file(document0)
+        doc0 = PdfReader(doc0_path)
+        check0 = 1
+    
+    try:
+        doc1_path = document1
+        doc1 = PdfReader(doc1_path)
+        check1 = 0
+    except:
+        doc1_path = decompress_file(document1)
+        doc1 = PdfReader(doc1_path)
+        check1 = 1
 
     for page0 in doc0.Root.Pages.Kids:
-        for annot0 in page0.Annots:
-            #Ignore signature field
-            title = annot0.T.lower()
-            if(title.find("signature") == -1):
-                value0 = annot0.AP.N.stream
-                index_value0_start = value0.find(" Tf")
-                index_value0_end = value0.find(") Tj")
-                string_value0 = value0[index_value0_start+5:index_value0_end]
-                check = 0
-                for page1 in doc1.Root.Pages.Kids:
-                    for annot1 in page1.Annots:
-                        #Ignore signature field
-                        title = annot1.T.lower()
-                        if(title.find("signature") == -1):
-                            value1 = annot1.AP.N.stream
-                            index_value1_start = value1.find(" Tf")
-                            index_value1_end = value1.find(") Tj")
-                            string_value1 = value1[index_value1_start+5:index_value1_end]
-                            if(value0 == value1):
-                                check = 1
-                if(check == 0):
-                    print('WARNING! Form text: "' + string_value1 + '" replaced by text: "' + string_value0 + '"')
-                    warnings+=1
+        try:
+            for annot0 in page0.Annots:
+                #Ignore signature field
+                title = annot0.T.lower()
+                if(title.find("signature") == -1):
+                    check = 0
+                    try:
+                        value0 = annot0.AP.N.stream
+                    except:
+                        break
+                    index_value0_start = value0.find(" Tf")
+                    index_value0_end = value0.find(") Tj")
+                    string_value0 = value0[index_value0_start+5:index_value0_end]
+                    for page1 in doc1.Root.Pages.Kids:
+                        for annot1 in page1.Annots:
+                            #Ignore signature field
+                            title = annot1.T.lower()
+                            if(title.find("signature") == -1):
+                                value1 = annot1.AP.N.stream
+                                index_value1_start = value1.find(" Tf")
+                                index_value1_end = value1.find(") Tj")
+                                string_value1 = value1[index_value1_start+5:index_value1_end]
+                                if(value0 == value1):
+                                    check = 1
+                    if(check == 0):
+                        print('WARNING! Form text: "' + string_value1 + '" replaced by text: "' + string_value0 + '"')
+                        warnings+=1
+        except:
+            break
+
+    if(check0 == 1):
+        if os.path.exists(doc0_path):
+            os.remove(doc0_path)
+
+    if(check1 == 1):
+        if os.path.exists(doc1_path):
+            os.remove(doc1_path)
+
+    return warnings;
+
+def compare_files_detection_replace_overlay(document0, document1):
+    warnings = 0
+
+    try:
+        doc0_path = document0
+        doc0 = PdfReader(doc0_path)
+        check0 = 0
+    except:
+        doc0_path = decompress_file(document0)
+        doc0 = PdfReader(doc0_path)
+        check0 = 1
+    
+    try:
+        doc1_path = document1
+        doc1 = PdfReader(doc1_path)
+        check1 = 0
+    except:
+        doc1_path = decompress_file(document1)
+        doc1 = PdfReader(doc1_path)
+        check1 = 1
+
+    for page0 in doc0.Root.Pages.Kids:
+        try:
+            for annot0 in page0.Annots:
+                #Ignore signature field
+                title = annot0.T.lower()
+                if(title.find("signature") == -1):
+                    check = 0
+                    try:
+                        value0 = annot0.AP.N.stream
+                    except:
+                        break
+                    index_value0_start = value0.find(" Tf")
+                    index_value0_end = value0.find(") Tj")
+                    string_value0 = value0[index_value0_start+5:index_value0_end]
+                    for page1 in doc1.Root.Pages.Kids:
+                        for annot1 in page1.Annots:
+                            #Ignore signature field
+                            title = annot1.T.lower()
+                            if(title.find("signature") == -1):
+                                value1 = annot1.AP.N.stream
+                                index_value1_start = value1.find(" Tf")
+                                index_value1_end = value1.find(") Tj")
+                                string_value1 = value1[index_value1_start+5:index_value1_end]
+                                if(value0 == value1):
+                                    check = 1
+                    if(check == 0):
+                        print('WARNING! Form text: "' + string_value1 + '" replaced by text: "' + string_value0 + '"')
+                        warnings+=1
+        except:
+            break
+
+    if(check0 == 1):
+        if os.path.exists(doc0_path):
+            os.remove(doc0_path)
+
+    if(check1 == 1):
+        if os.path.exists(doc1_path):
+            os.remove(doc1_path)
 
     return warnings;
 
@@ -558,6 +719,16 @@ def show_elements(document):
 
 
     return warnings;
+
+def decompress_file(document):
+    rand = str(randint(1, 9999))
+    
+    try:
+        tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
+        pypdftk.uncompress(document, tmpfile_str)
+        return tmpfile_str;
+    except:
+        return document;
 
 #Start
 #Check arguments
