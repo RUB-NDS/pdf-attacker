@@ -91,6 +91,41 @@ def shadow_hide_preventor(document):
     file.close()
     return warnings;
 
+def shadow_hide_preventor_form(document):
+    warnings = 0
+
+    try:
+        doc_path = document
+        doc = PdfReader(doc_path)
+        check = 0
+    except:
+        doc_path = decompress_file(document)
+        doc = PdfReader(doc_path)
+        check = 1
+
+    for page in doc.Root.Pages.Kids:
+        try:
+            for annot in page.Annots:
+                try:
+                    value0 = annot.V
+                    tmp = annot.AP.N.stream
+                    index_value1_start = tmp.find(" Td")
+                    index_value1_end = tmp.find(" Tj")
+                    value1 = tmp[index_value1_start+4:index_value1_end]
+                except:
+                    break
+                if(value0 != value1):
+                    print('WARNING! Form text: "' + value0 + '" overlayed by text: "' + value1 + '"')
+                    warnings+=1
+        except:
+            break
+    
+    if(check == 1):
+        if os.path.exists(doc_path):
+            os.remove(doc_path)
+
+    return warnings;
+
 def shadow_hide_replace_preventor(document):
     warnings = 0
 
@@ -173,6 +208,69 @@ def shadow_hide_replace_preventor(document):
         i+=1
 
     return warnings;
+
+def shadow_hide_form_detector(document):
+    warnings = 0
+
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+    
+    #Get byte value of first signature
+    tmp = content_str_lower.find("/type/sig")
+    if (tmp > 0):
+        index_of_first_sig = tmp
+    else:
+        index_of_first_sig = content_str_lower.find("/type /sig")
+
+    #Get byte value of EOFs.
+    i = 0
+    index_of_eof = [content_str.find("%%EOF")+6]    
+    if(index_of_eof[0] > 0):
+        while(True):
+            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
+            if(tmp > 0):
+                index_of_eof.append(tmp+6)
+                i+=1
+            else:
+                break
+    
+    if (i == 0):
+        print("Error while capturing the EOF byte values!")
+        return warnings;
+
+    #Get byte value of signature-EOF 
+    index_of_sig_eof = 0
+    i = 0
+    for byte_value in index_of_eof:
+        if (byte_value > index_of_first_sig):
+            index_of_sig_eof = index_of_eof[i-1]
+            break
+        i+=1
+    
+    #Remove incremental updates
+    if(len(content_str) >= index_of_eof[-1]):
+        content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
+    
+    content_encoded = content_str_no_updates.encode("iso-8859-1")
+
+    
+ 
+    rand = str(randint(1, 9999))
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
+    tmpfile = open(tmpfile_str, "xb")
+    tmpfile.write(content_encoded)
+    tmpfile.close()
+
+
+    warnings = compare_files_detection_hide_overlay(document, tmpfile_str)
+    if os.path.exists(tmpfile_str):
+        os.remove(tmpfile_str)
+
+    return warnings; 
 
 def shadow_hide_and_hide_replace_detector(document):
     warnings = 0
@@ -368,70 +466,7 @@ def shadow_replace_form_detector(document):
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
 
-    return warnings;
-
-def shadow_replace_form_overlay_detector(document):
-    warnings = 0
-
-    file = open(document, 'rb')
-    content_encoded = file.read()
-    file.close()
-    content = content_encoded.decode("iso-8859-1")
-    content_str = str(content)
-    content_str_lower = content_str.lower()
-    
-    #Get byte value of first signature
-    tmp = content_str_lower.find("/type/sig")
-    if (tmp > 0):
-        index_of_first_sig = tmp
-    else:
-        index_of_first_sig = content_str_lower.find("/type /sig")
-
-    #Get byte value of EOFs.
-    i = 0
-    index_of_eof = [content_str.find("%%EOF")+6]    
-    if(index_of_eof[0] > 0):
-        while(True):
-            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
-            if(tmp > 0):
-                index_of_eof.append(tmp+6)
-                i+=1
-            else:
-                break
-    
-    if (i == 0):
-        print("Error while capturing the EOF byte values!")
-        return warnings;
-
-    #Get byte value of signature-EOF 
-    index_of_sig_eof = 0
-    i = 0
-    for byte_value in index_of_eof:
-        if (byte_value > index_of_first_sig):
-            index_of_sig_eof = index_of_eof[i-1]
-            break
-        i+=1
-    
-    #Remove incremental updates
-    if(len(content_str) >= index_of_eof[-1]):
-        content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
-    
-    content_encoded = content_str_no_updates.encode("iso-8859-1")
-
-    
- 
-    rand = str(randint(1, 9999))
-    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
-    tmpfile = open(tmpfile_str, "xb")
-    tmpfile.write(content_encoded)
-    tmpfile.close()
-
-
-    warnings = compare_files_detection_replace_value(document, tmpfile_str)
-    if os.path.exists(tmpfile_str):
-        os.remove(tmpfile_str)
-
-    return warnings;    
+    return warnings;   
 
 def compare_files(document0, document1):
     warnings = 0
@@ -558,6 +593,72 @@ def compare_files_prevent(document0, document1):
     file1.close()
     return warnings;
 
+def compare_files_detection_hide_overlay(document0, document1):
+    warnings = 0
+
+    try:
+        doc0_path = document0
+        doc0 = PdfReader(doc0_path)
+        check0 = 0
+    except:
+        doc0_path = decompress_file(document0)
+        doc0 = PdfReader(doc0_path)
+        check0 = 1
+    
+    try:
+        doc1_path = document1
+        doc1 = PdfReader(doc1_path)
+        check1 = 0
+    except:
+        doc1_path = decompress_file(document1)
+        doc1 = PdfReader(doc1_path)
+        check1 = 1
+
+    for page0 in doc1.Root.Pages.Kids:
+        #Start delete
+        #for annot0 in page0.Annots:
+            #print(annot0.Rect)
+        #break
+        #End delete 
+        try:
+            for annot0 in page0.Annots:
+                #Ignore signature field
+                title = annot0.T.lower()
+                if(title.find("signature") == -1):
+                    check = 0
+                    try:
+                        value0 = annot0.AP.N.stream
+                    except:
+                        break
+                    index_value0_start = value0.find(" Td")
+                    index_value0_end = value0.find(") Tj")
+                    string_value0 = value0[index_value0_start+5:index_value0_end]
+                    for page1 in doc0.Root.Pages.Kids:
+                        for annot1 in page1.Annots:
+                            #Ignore signature field
+                            title = annot1.T.lower()
+                            try:
+                                value1 = annot1.AP.N.stream
+                            except:
+                                break
+                            if(value0 == value1):
+                                check = 1
+                    if(check == 0):
+                        print('WARNING! Form text: "' + string_value0 + '" was removed after signing!')
+                        warnings+=1
+        except:
+            break
+
+    if(check0 == 1):
+        if os.path.exists(doc0_path):
+            os.remove(doc0_path)
+
+    if(check1 == 1):
+        if os.path.exists(doc1_path):
+            os.remove(doc1_path)
+
+    return warnings;
+
 def compare_files_detection_replace_value(document0, document1):
     warnings = 0
 
@@ -598,69 +699,10 @@ def compare_files_detection_replace_value(document0, document1):
                             #Ignore signature field
                             title = annot1.T.lower()
                             if(title.find("signature") == -1):
-                                value1 = annot1.AP.N.stream
-                                index_value1_start = value1.find(" Tf")
-                                index_value1_end = value1.find(") Tj")
-                                string_value1 = value1[index_value1_start+5:index_value1_end]
-                                if(value0 == value1):
-                                    check = 1
-                    if(check == 0):
-                        print('WARNING! Form text: "' + string_value1 + '" replaced by text: "' + string_value0 + '"')
-                        warnings+=1
-        except:
-            break
-
-    if(check0 == 1):
-        if os.path.exists(doc0_path):
-            os.remove(doc0_path)
-
-    if(check1 == 1):
-        if os.path.exists(doc1_path):
-            os.remove(doc1_path)
-
-    return warnings;
-
-def compare_files_detection_replace_overlay(document0, document1):
-    warnings = 0
-
-    try:
-        doc0_path = document0
-        doc0 = PdfReader(doc0_path)
-        check0 = 0
-    except:
-        doc0_path = decompress_file(document0)
-        doc0 = PdfReader(doc0_path)
-        check0 = 1
-    
-    try:
-        doc1_path = document1
-        doc1 = PdfReader(doc1_path)
-        check1 = 0
-    except:
-        doc1_path = decompress_file(document1)
-        doc1 = PdfReader(doc1_path)
-        check1 = 1
-
-    for page0 in doc0.Root.Pages.Kids:
-        try:
-            for annot0 in page0.Annots:
-                #Ignore signature field
-                title = annot0.T.lower()
-                if(title.find("signature") == -1):
-                    check = 0
-                    try:
-                        value0 = annot0.AP.N.stream
-                    except:
-                        break
-                    index_value0_start = value0.find(" Tf")
-                    index_value0_end = value0.find(") Tj")
-                    string_value0 = value0[index_value0_start+5:index_value0_end]
-                    for page1 in doc1.Root.Pages.Kids:
-                        for annot1 in page1.Annots:
-                            #Ignore signature field
-                            title = annot1.T.lower()
-                            if(title.find("signature") == -1):
-                                value1 = annot1.AP.N.stream
+                                try:
+                                    value1 = annot1.AP.N.stream
+                                except:
+                                    break
                                 index_value1_start = value1.find(" Tf")
                                 index_value1_end = value1.find(") Tj")
                                 string_value1 = value1[index_value1_start+5:index_value1_end]
@@ -747,10 +789,15 @@ else:
         print("Start Detection-Mode.")
         #Call detector for category Hide and Hide-and-Replace
         warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
-        if (warnings_dec_hide_and_replace == 0):
-            print('Check complete: no Shadow Attacks in category "Hide" and/or "Hide and Replace" detected.\n')
+
+        #Call detector for category Hide (form)
+        warnings_dec_hide_form = shadow_hide_form_detector(document)
+
+        warnings_dec_hide_form_and_hide_replace = warnings_dec_hide_and_replace + warnings_dec_hide_form
+        if (warnings_dec_hide_form_and_hide_replace == 0):
+            print('Check complete: no Shadow Attacks in category "Hide" or "Hide and Replace" detected.\n')
         else:
-            print('Check complete: WARNING! ' + str(warnings_dec_hide_and_replace) + ' Shadow Attack(s) in category "Hide" and/or "Hide and Replace" detected.\n')
+            print('Check complete: WARNING! ' + str(warnings_dec_hide_form_and_hide_replace) + ' Shadow Attack(s) in category "Hide" and/or "Hide and Replace" detected.\n')
         
         #Call detector for category Replace
         warnings_dec_replace_font = shadow_replace_font_detector(document)
@@ -768,10 +815,14 @@ else:
         print("Start Prevention-Mode.")
         #Call preventor for category Hide
         warnings_pre_hide = shadow_hide_preventor(document)
-        if (warnings_pre_hide == 0):
+        warnings_pre_hide_form = shadow_hide_preventor_form(document)
+
+        warnings_pre_hide_and_hide_form = warnings_pre_hide + warnings_pre_hide_form
+
+        if (warnings_pre_hide_and_hide_form == 0):
             print('\nCheck complete: no Shadow Attacks in category "Hide" detected.')
         else:
-            print('\nCheck complete: WARNING! ' + str(warnings_pre_hide) + ' Shadow Attack(s) in category "Hide" detected.')
+            print('\nCheck complete: WARNING! ' + str(warnings_pre_hide_and_hide_form) + ' Shadow Attack(s) in category "Hide" detected.')
 
         #Call preventor for category Hide-and-Replace
         warnings_pre_hide_replace = shadow_hide_replace_preventor(document)
