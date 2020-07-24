@@ -84,11 +84,184 @@ def shadow_hide_preventor(document):
 
                         if (p > 0 and p < 100):
                             warnings += 1
-                            print('WARNING! element: "' + figure_name + '" overlaps ' + str(p) + ' percent of the following content:\n' + text_content)
+                            print('WARNING! element: "' + figure_name + '" overlaps ' + str(p) + ' percent of the following content: ' + text_content)
                         if (p >= 100):
                             warnings += 1
-                            print('WARNING! element: "' + figure_name + '" overlaps completely the following content:\n' + text_content)
+                            print('WARNING! element: "' + figure_name + '" overlaps completely the following content: ' + text_content)
     file.close()
+    return warnings;
+
+def shadow_hide_preventor_v2(document):
+    
+    warnings = 0
+    try:
+        doc_path = document
+        doc = PdfReader(doc_path)
+        check = 0
+    except:
+        doc_path = decompress_file(document)
+        doc = PdfReader(doc_path)
+        check = 1
+
+    file = open(document, 'rb')
+
+    #Create resource manager
+    rsrcmgr = PDFResourceManager()
+    #Set parameters for analysis.
+    laparams = LAParams()
+    #Create a PDF page aggregator object.
+    device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+    interpreter = PDFPageInterpreter(rsrcmgr, device) 
+
+    #Search for forms in pdf
+    for page in doc.Root.Pages.Kids:
+        try:
+            for annot in page.Annots:
+                try:
+                    rect1 = str(annot.Rect)
+                    rect1 = rect1.replace('[', '')
+                    rect1 = rect1.replace(']', '')
+                    rect1 = rect1.replace(',', '') 
+                    rect1 = rect1.replace("'", '') 
+                    value1 = str(annot.V)
+                    #Extract coordinates (figure)
+                    coordinates_a = rect1.split(" ")
+
+                    #Set points for rectangle a 
+                    a_left = float(coordinates_a[0])
+                    a_bottom = float(coordinates_a[1])
+                    a_right = float(coordinates_a[2])
+                    a_top = float(coordinates_a[3])
+                    
+                    for page in PDFPage.get_pages(file):
+                        interpreter.process_page(page)  
+                        #Receive the LTPage object for the page.
+                        layout = device.get_result()
+
+                        #Search for elements in pdf
+                        for element0 in layout:      
+
+                            s = str(element0)
+                            value0 = element0.get_text()
+                            tmp = s.split(" ")
+
+                            #Extract coordinates (figure)
+                            coordinates_b = tmp[1].split(",")
+
+                            #Set points for rectangle b
+                            b_left = float(coordinates_b[0])
+                            b_bottom = float(coordinates_b[1])
+                            b_right = float(coordinates_b[2])
+                            b_top = float(coordinates_b[3])
+
+                            #Calculate surface area for rectangle b
+                            b_S = (b_right - b_left) * (b_top - b_bottom)
+
+                            #Calculate overlap
+                            a_b_I = max(0, min(a_right, b_right) - max(a_left, b_left)) * max(0, min(a_top, b_top) - max(a_bottom, b_bottom))
+
+                            #Caluculate ratio r
+                            r = a_b_I / b_S
+
+                            #Calculate overlap in percentage p
+                            p = round((r*100), 2)
+
+                            if (p > 0 and p < 100):
+                                warnings += 1
+                                print('WARNING! element: "' + value1 + '" overlaps ' + str(p) + ' percent of the following content: ' + value0)
+                            if (p >= 100):
+                                warnings += 1
+                                print('WARNING! element: "' + value1 + '" overlaps completely the following content: ' + value0)
+                except:
+                    pass
+        except:
+            pass
+
+    file.close()
+    return warnings;
+
+def shadow_hide_preventor_v3(document):
+    
+    warnings = 0
+    try:
+        doc_path = document
+        doc = PdfReader(doc_path)
+        check = 0
+    except:
+        doc_path = decompress_file(document)
+        doc = PdfReader(doc_path)
+        check = 1
+
+    #Search for forms in pdf
+    double_check = []
+    for page0 in doc.Root.Pages.Kids:
+        try:
+            for annot0 in page0.Annots:
+                try:
+                    double_check.append(str(annot0))
+                    rect0 = str(annot0.Rect)
+                    rect0 = rect0.replace('[', '')
+                    rect0 = rect0.replace(']', '')
+                    rect0 = rect0.replace(',', '') 
+                    rect0 = rect0.replace("'", '') 
+                    value0 = str(annot0.V)
+                    #Extract coordinates (figure)
+                    coordinates_a = rect0.split(" ")
+
+                    #Set points for rectangle a 
+                    a_left = float(coordinates_a[0])
+                    a_bottom = float(coordinates_a[1])
+                    a_right = float(coordinates_a[2])
+                    a_top = float(coordinates_a[3])
+                    
+                    for page1 in doc.Root.Pages.Kids:
+                        try:
+                            for annot1 in page1.Annots:
+                                try:
+                                    if(annot0 != annot1):
+                                        rect1 = str(annot1.Rect)
+                                        rect1 = rect1.replace('[', '')
+                                        rect1 = rect1.replace(']', '')
+                                        rect1 = rect1.replace(',', '') 
+                                        rect1 = rect1.replace("'", '') 
+                                        value1 = str(annot1.V)
+                                        #Extract coordinates (figure)
+                                        coordinates_b = rect1.split(" ")
+
+                                        #Set points for rectangle a 
+                                        b_left = float(coordinates_b[0])
+                                        b_bottom = float(coordinates_b[1])
+                                        b_right = float(coordinates_b[2])
+                                        b_top = float(coordinates_b[3])
+
+                                        #Calculate surface area for rectangle b
+                                        b_S = (b_right - b_left) * (b_top - b_bottom)
+
+                                        #Calculate overlap
+                                        a_b_I = max(0, min(a_right, b_right) - max(a_left, b_left)) * max(0, min(a_top, b_top) - max(a_bottom, b_bottom))
+
+                                        #Caluculate ratio r
+                                        r = a_b_I / b_S
+
+                                        #Calculate overlap in percentage p
+                                        p = round((r*100), 2)
+
+                                        if not(str(annot1) in double_check):
+                                            if (p > 0 and p < 100):
+                                                warnings += 1
+                                                print('WARNING! form: "' + value0 + '" and ' + value1 + ' overlaps each other to: ' + str(p) + ' percent')
+                                            if (p >= 100):
+                                                warnings += 1
+                                                print('WARNING! form: "' + value0 + '" and ' + value1 + ' overlaps each other completely')
+                                except:
+                                     pass
+                        except:
+                            pass
+                except:
+                    pass
+        except:
+            pass
+
     return warnings;
 
 def shadow_hide_preventor_form(document):
@@ -109,9 +282,9 @@ def shadow_hide_preventor_form(document):
                 try:
                     value0 = annot.V
                     tmp = annot.AP.N.stream
-                    index_value1_start = tmp.find(" Td")
-                    index_value1_end = tmp.find(" Tj")
-                    value1 = tmp[index_value1_start+4:index_value1_end]
+                    index_value1_start = tmp.find("(")
+                    index_value1_end = tmp.find(") ")
+                    value1 = tmp[index_value1_start:index_value1_end+1]
                 except:
                     break
                 if(value0 != value1):
@@ -138,10 +311,14 @@ def shadow_hide_replace_preventor(document):
 
     #Get byte value of Pages object.
     i = 0
-    index_of_pages = [content_str_lower.find("/type /pages")]    
-    if(index_of_pages[0] > 0):
+    pages_string = "/type /pages"
+    index_of_pages = [content_str_lower.find(pages_string)]    
+    if(index_of_pages[0] < 0):
+        pages_string = "/type/pages"
+        index_of_pages = [content_str_lower.find(pages_string)]
+    if(index_of_pages[0] > 0): 
         while(True):
-            tmp = content_str_lower.find("/type /pages", index_of_pages[i]+6)
+            tmp = content_str_lower.find(pages_string, index_of_pages[i]+6)
             if(tmp > 0):
                 index_of_pages.append(tmp)
                 i+=1
@@ -254,7 +431,7 @@ def shadow_hide_form_detector(document):
     #Remove incremental updates
     if(len(content_str) >= index_of_eof[-1]):
         content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
-    
+
     content_encoded = content_str_no_updates.encode("iso-8859-1")
 
     
@@ -266,7 +443,12 @@ def shadow_hide_form_detector(document):
     tmpfile.close()
 
 
+
     warnings = compare_files_detection_hide_overlay(document, tmpfile_str)
+    if(warnings == 0):
+        warnings = compare_files_detection_hide_overlay_v2(document, tmpfile_str)
+    if(warnings == 0):
+        warnings = compare_files_detection_hide_overlay_v3(document, tmpfile_str)
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
 
@@ -390,7 +572,6 @@ def shadow_replace_font_detector(document):
                 break
 
     if (index_of_fontfile[0] < 0):
-        print("No font files found in the document.")
         return warnings;
 
     #Get FontFile Object Number
@@ -511,7 +692,7 @@ def compare_files(document0, document1):
                     if (s0 == s1):
                         check = 1
             if (check == 0):
-                print('WARNING! Object added to document after signing:\n' + s0)
+                print('WARNING! Object added to document after signing: ' + s0)
                 warnings+=1
     
     for page1 in PDFPage.get_pages(file1):
@@ -586,7 +767,7 @@ def compare_files_prevent(document0, document1):
                     if (s0 == s1):
                         check = 1
             if (check == 0):
-                print('WARNING! Document contains hidden content :\n' + s0)
+                print('WARNING! Document contains hidden content: ' + s0)
                 warnings+=1
 
     file0.close()
@@ -615,11 +796,6 @@ def compare_files_detection_hide_overlay(document0, document1):
         check1 = 1
 
     for page0 in doc1.Root.Pages.Kids:
-        #Start delete
-        #for annot0 in page0.Annots:
-            #print(annot0.Rect)
-        #break
-        #End delete 
         try:
             for annot0 in page0.Annots:
                 #Ignore signature field
@@ -630,9 +806,9 @@ def compare_files_detection_hide_overlay(document0, document1):
                         value0 = annot0.AP.N.stream
                     except:
                         break
-                    index_value0_start = value0.find(" Td")
-                    index_value0_end = value0.find(") Tj")
-                    string_value0 = value0[index_value0_start+5:index_value0_end]
+                    index_value0_start = value0.find("(")
+                    index_value0_end = value0.find(") ")
+                    string_value0 = value0[index_value0_start:index_value0_end+1]
                     for page1 in doc0.Root.Pages.Kids:
                         for annot1 in page1.Annots:
                             #Ignore signature field
@@ -656,6 +832,142 @@ def compare_files_detection_hide_overlay(document0, document1):
     if(check1 == 1):
         if os.path.exists(doc1_path):
             os.remove(doc1_path)
+
+    return warnings;
+
+def compare_files_detection_hide_overlay_v2(document0, document1):
+    warnings = 0
+
+    try:
+        doc0_path = document0
+        doc0 = PdfReader(doc0_path)
+        check0 = 0
+    except:
+        doc0_path = decompress_file(document0)
+        doc0 = PdfReader(doc0_path)
+        check0 = 1
+    
+    try:
+        doc1_path = document1
+        doc1 = PdfReader(doc1_path)
+        check1 = 0
+    except:
+        doc1_path = decompress_file(document1)
+        doc1 = PdfReader(doc1_path)
+        check1 = 1
+
+    for page0 in doc1.Root.Pages.Kids:
+        try:
+            for annot0 in page0.Annots:
+                check = 0
+                try:
+                    value0 = annot0.V
+                except:
+                    pass
+                for page1 in doc0.Root.Pages.Kids:
+                    for annot1 in page1.Annots:
+                        try:
+                            value1 = annot1.V
+                        except:
+                            pass
+                        if(value0 == value1):
+                            check = 1
+                if(check == 0):
+                    print('WARNING! Form text: "' + str(value0) + '" was removed after signing!')
+                    warnings+=1
+        except:
+            pass
+
+    if(check0 == 1):
+        if os.path.exists(doc0_path):
+            os.remove(doc0_path)
+
+    if(check1 == 1):
+        if os.path.exists(doc1_path):
+            os.remove(doc1_path)
+
+    return warnings;
+
+def compare_files_detection_hide_overlay_v3(document0, document1):
+    warnings = 0
+    try:
+        doc_path = document
+        doc = PdfReader(doc_path)
+        check = 0
+    except:
+        doc_path = decompress_file(document)
+        doc = PdfReader(doc_path)
+        check = 1
+
+    #Search for forms in pdf
+    double_check = []
+    for page0 in doc.Root.Pages.Kids:
+        try:
+            for annot0 in page0.Annots:
+                try:
+                    double_check.append(str(annot0))
+                    rect0 = str(annot0.Rect)
+                    rect0 = rect0.replace('[', '')
+                    rect0 = rect0.replace(']', '')
+                    rect0 = rect0.replace(',', '') 
+                    rect0 = rect0.replace("'", '') 
+                    value0 = str(annot0.V)
+                    #Extract coordinates (figure)
+                    coordinates_a = rect0.split(" ")
+
+                    #Set points for rectangle a 
+                    a_left = float(coordinates_a[0])
+                    a_bottom = float(coordinates_a[1])
+                    a_right = float(coordinates_a[2])
+                    a_top = float(coordinates_a[3])
+                    if(str(annot0.V.Type) != "Sig"):
+                        for page1 in doc.Root.Pages.Kids:
+                            try:
+                                for annot1 in page1.Annots:
+                                    try:
+                                        if(annot0 != annot1 and str(annot1.V.Type) != "Sig"):
+                                            rect1 = str(annot1.Rect)
+                                            rect1 = rect1.replace('[', '')
+                                            rect1 = rect1.replace(']', '')
+                                            rect1 = rect1.replace(',', '') 
+                                            rect1 = rect1.replace("'", '') 
+                                            value1 = str(annot1.V)
+                                            #Extract coordinates (figure)
+                                            coordinates_b = rect1.split(" ")
+
+                                            #Set points for rectangle a 
+                                            b_left = float(coordinates_b[0])
+                                            b_bottom = float(coordinates_b[1])
+                                            b_right = float(coordinates_b[2])
+                                            b_top = float(coordinates_b[3])
+
+                                            #Calculate surface area for rectangle b
+                                            b_S = (b_right - b_left) * (b_top - b_bottom)
+
+                                            #Calculate overlap
+                                            a_b_I = max(0, min(a_right, b_right) - max(a_left, b_left)) * max(0, min(a_top, b_top) - max(a_bottom, b_bottom))
+
+                                            #Caluculate ratio r
+                                            r = a_b_I / b_S
+
+                                            #Calculate overlap in percentage p
+                                            p = round((r*100), 2)
+
+                                            if not(str(annot1) in double_check):
+                                                if (p > 0 and p < 100):
+                                                    warnings += 1
+                                                    print('WARNING! form: "' + value0 + '" and ' + value1 + ' overlaps each other to: ' + str(p) + ' percent')
+                                                if (p >= 100):
+                                                    warnings += 1
+                                                    print('WARNING! form: "' + value0 + '" and ' + value1 + ' overlaps each other completely')
+                                    except:
+                                        pass
+                            except:
+                                pass
+                except:
+                    pass
+        except:
+            pass
 
     return warnings;
 
@@ -740,6 +1052,60 @@ def check_sig_state(document):
     
     return sig_state
 
+def remove_sig_and_updates(document):
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+    
+    #Get byte value of first signature
+    tmp = content_str_lower.find("/type/sig")
+    if (tmp > 0):
+        index_of_first_sig = tmp
+    else:
+        index_of_first_sig = content_str_lower.find("/type /sig")
+
+    #Get byte value of EOFs.
+    i = 0
+    index_of_eof = [content_str.find("%%EOF")+6]    
+    if(index_of_eof[0] > 0):
+        while(True):
+            tmp = content_str.find("%%EOF", index_of_eof[i]+6)
+            if(tmp > 0):
+                index_of_eof.append(tmp+6)
+                i+=1
+            else:
+                break
+    
+    if (i == 0):
+        print("Error while capturing the EOF byte values!")
+        return warnings;
+
+    #Get byte value of signature-EOF 
+    index_of_sig_eof = 0
+    i = 0
+    for byte_value in index_of_eof:
+        if (byte_value > index_of_first_sig):
+            index_of_sig_eof = index_of_eof[i-1]
+            break
+        i+=1
+    
+    #Remove incremental updates
+    if(len(content_str) >= index_of_eof[-1]):
+        content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
+    
+    content_encoded = content_str_no_updates.encode("iso-8859-1")
+ 
+    rand = str(randint(1, 9999))
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
+    tmpfile = open(tmpfile_str, "xb")
+    tmpfile.write(content_encoded)
+    tmpfile.close()
+
+    return tmpfile_str; 
+
 def show_elements(document):
     warnings = 0
     file = open(document, 'rb')
@@ -772,12 +1138,61 @@ def decompress_file(document):
     except:
         return document;
 
+def detector(document):
+    print("Start Detection-Mode.")
+    #Call detector for category Hide and Hide-and-Replace
+    warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
+
+    #Call detector for category Hide (form)
+    warnings_dec_hide_form = shadow_hide_form_detector(document)
+    
+    #Call detector for category Replace
+    warnings_dec_replace_font = shadow_replace_font_detector(document)
+    warnings_dec_replace_form = shadow_replace_form_detector(document)
+
+    warnings_detection_all = warnings_dec_replace_font + warnings_dec_replace_form + warnings_dec_hide_and_replace + warnings_dec_hide_form
+    if (warnings_detection_all == 0):
+        print('Check complete: no active Shadow Attacks detected.')
+    else:
+        print('\nCheck complete: WARNING! ' + str(warnings_detection_all) + ' active Shadow Attack(s) detected.')
+    
+    return warnings_detection_all;
+
+def preventor(document):
+    print("Start Prevention-Mode.")
+    #Call preventor for category Hide
+    warnings_pre_hide = shadow_hide_preventor(document)
+    if(warnings_pre_hide == 0):
+        warnings_pre_hide = shadow_hide_preventor_v2(document)
+    if(warnings_pre_hide == 0):
+        warnings_pre_hide = shadow_hide_preventor_v3(document)   
+         
+    warnings_pre_hide_form = shadow_hide_preventor_form(document)
+
+    #Call preventor for category Hide-and-Replace
+    warnings_pre_hide_replace = shadow_hide_replace_preventor(document)
+    
+    warnings_prevention_all =  warnings_pre_hide_replace + warnings_pre_hide + warnings_pre_hide_form
+    if (warnings_prevention_all == 0):
+        print('Check complete: no inactive Shadow Attacks detected.')
+    else:
+        print('\nCheck complete: WARNING! ' + str(warnings_prevention_all) + ' inactive Shadow Attack(s) detected.')
+
+    return warnings_prevention_all;
+
+
 #Start
+print("*****Start*****\n")
 #Check arguments
 if(len(sys.argv) < 2):
     print("Please pass the PDF file to be checked as argument!")
+    print("\n*****End*****")
 elif not(str(sys.argv[1]).endswith('.pdf')):
     print("Please pass only PDF files!")
+    print("\n*****End*****")
+elif not(os.path.exists(sys.argv[1])):
+    print("Wrong file path!")
+    print("\n*****End*****")
 else:
     document = str(sys.argv[1])
     
@@ -786,50 +1201,34 @@ else:
     if(check_sig_state(document) > 0):
         #Detector
         print("PDF File contains signatures.")
-        print("Start Detection-Mode.")
-        #Call detector for category Hide and Hide-and-Replace
-        warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
+        try:
+            warnings = detector(document)
+        except:
+            print("Error in Detection process!")
 
-        #Call detector for category Hide (form)
-        warnings_dec_hide_form = shadow_hide_form_detector(document)
-
-        warnings_dec_hide_form_and_hide_replace = warnings_dec_hide_and_replace + warnings_dec_hide_form
-        if (warnings_dec_hide_form_and_hide_replace == 0):
-            print('Check complete: no Shadow Attacks in category "Hide" or "Hide and Replace" detected.\n')
-        else:
-            print('Check complete: WARNING! ' + str(warnings_dec_hide_form_and_hide_replace) + ' Shadow Attack(s) in category "Hide" and/or "Hide and Replace" detected.\n')
-        
-        #Call detector for category Replace
-        warnings_dec_replace_font = shadow_replace_font_detector(document)
-        warnings_dec_replace_form = shadow_replace_form_detector(document)
-
-        warnings_replace = warnings_dec_replace_font + warnings_dec_replace_form
-        if (warnings_replace == 0):
-            print('Check complete: no Shadow Attacks in category "Replace" detected.\n')
-        else:
-            print('Check complete: WARNING! ' + str(warnings_replace) + ' Shadow Attack(s) in category "Replace" detected.\n')
+        if (warnings == 0):
+            print('\nNo active Shadow Attacks were found. Search for inactive Shadow Attacks.')
+            doc_prev = remove_sig_and_updates(document)
+            try:
+                warnings = preventor(doc_prev)
+            except:
+                print("Error in Prevention process!")
+            if os.path.exists(doc_prev):
+                os.remove(doc_prev)
 
     else:
         #Preventor
         print("PDF File contains no signatures.")
-        print("Start Prevention-Mode.")
-        #Call preventor for category Hide
-        warnings_pre_hide = shadow_hide_preventor(document)
-        warnings_pre_hide_form = shadow_hide_preventor_form(document)
+        try:
+            warnings = preventor(document)
+        except:
+            print("Error in Prevention process!")
 
-        warnings_pre_hide_and_hide_form = warnings_pre_hide + warnings_pre_hide_form
-
-        if (warnings_pre_hide_and_hide_form == 0):
-            print('\nCheck complete: no Shadow Attacks in category "Hide" detected.')
-        else:
-            print('\nCheck complete: WARNING! ' + str(warnings_pre_hide_and_hide_form) + ' Shadow Attack(s) in category "Hide" detected.')
-
-        #Call preventor for category Hide-and-Replace
-        warnings_pre_hide_replace = shadow_hide_replace_preventor(document)
-        if (warnings_pre_hide_replace == 0):
-            print('\nCheck complete: no Shadow Attacks in category "Hide and Replace" detected.')
-        else:
-            print('\nCheck complete: WARNING! ' + str(warnings_pre_hide_replace) + ' Shadow Attack(s) in category "Hide and Replace" detected.')
+    print("\n*****End*****")
+    if(warnings == 0):
+        print("No Shadow Attacks were found.")
+    else:
+        print("WARNING! A total of " + str(warnings) + " Shadow Attack(s) were found!")
 
 
    
