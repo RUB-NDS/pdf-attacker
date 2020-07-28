@@ -23,6 +23,7 @@
 		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
 		"python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
 		"nbConverter.seperator.default": "# %%",
+		"python.dataScience.alwaysTrustNotebooks": true,
 		"python.pythonPath": "/usr/local/bin/python",
 		"python.testing.unittestArgs": [
 			"-v",
