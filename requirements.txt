@@ -2,6 +2,8 @@ endesive
 fpdf
 notebook
 pdfminer
+pdfrw
 pypdf4
+pypdftk
 reportlab
 wand
