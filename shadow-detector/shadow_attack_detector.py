@@ -1187,9 +1187,11 @@ def main():
         print("Checked PDF files: " + str(file_counter))
 
     if(warnings == 0):
-        print("No Shadow Attacks were found.")
+        print("Malicious PDF files: 0")
+        print("\nNo Shadow Attacks were found.")
     else:
-        print("Malicious PDF files:")
+        print("Malicious PDF files: " + str(len(malicious_files)))
+        print("Malicious PDF file names:")
         i = 0
         for file_name in malicious_files:
             print("File #" + str(malicious_file_numbers[i]) + ": " + file_name)
