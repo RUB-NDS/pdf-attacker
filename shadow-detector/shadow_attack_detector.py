@@ -1,4 +1,5 @@
 import os
+import os.path
 import sys
 import time
 import re
@@ -395,14 +396,14 @@ def shadow_hide_form_detector(document):
     content = content_encoded.decode("iso-8859-1")
     content_str = str(content)
     content_str_lower = content_str.lower()
-
+    
     #Get byte value of first signature
     tmp = content_str_lower.find("/type/sig")
     if (tmp > 0):
         index_of_first_sig = tmp
     else:
         index_of_first_sig = content_str_lower.find("/type /sig")
-
+   
     #Get byte value of EOFs.
     i = 0
     index_of_eof = [content_str.find("%%EOF")+6]
@@ -418,7 +419,7 @@ def shadow_hide_form_detector(document):
     if (i == 0):
         print("Error while capturing the EOF byte values!")
         return warnings;
-
+ 
     #Get byte value of signature-EOF
     index_of_sig_eof = 0
     i = 0
@@ -427,7 +428,7 @@ def shadow_hide_form_detector(document):
             index_of_sig_eof = index_of_eof[i-1]
             break
         i+=1
-
+    
     #Remove incremental updates
     if(len(content_str) >= index_of_eof[-1]):
         content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
@@ -448,10 +449,9 @@ def shadow_hide_form_detector(document):
     if(warnings == 0):
         warnings = compare_files_detection_hide_overlay_v2(document, tmpfile_str)
     if(warnings == 0):
-        warnings = compare_files_detection_hide_overlay_v3(document, tmpfile_str)
+        warnings = shadow_hide_preventor(document)
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
-
     return warnings;
 
 def shadow_hide_and_hide_replace_detector(document):
@@ -888,89 +888,6 @@ def compare_files_detection_hide_overlay_v2(document0, document1):
 
     return warnings;
 
-def compare_files_detection_hide_overlay_v3(document0, document1):
-    warnings = 0
-    try:
-        doc_path = document
-        doc = PdfReader(doc_path)
-        check = 0
-    except:
-        doc_path = decompress_file(document)
-        doc = PdfReader(doc_path)
-        check = 1
-
-    #Search for forms in pdf
-    double_check = []
-    for page0 in doc.Root.Pages.Kids:
-        try:
-            for annot0 in page0.Annots:
-                try:
-                    double_check.append(str(annot0))
-                    rect0 = str(annot0.Rect)
-                    rect0 = rect0.replace('[', '')
-                    rect0 = rect0.replace(']', '')
-                    rect0 = rect0.replace(',', '')
-                    rect0 = rect0.replace("'", '')
-                    value0 = str(annot0.V)
-                    #Extract coordinates (figure)
-                    coordinates_a = rect0.split(" ")
-
-                    #Set points for rectangle a
-                    a_left = float(coordinates_a[0])
-                    a_bottom = float(coordinates_a[1])
-                    a_right = float(coordinates_a[2])
-                    a_top = float(coordinates_a[3])
-                    if(str(annot0.V.Type) != "Sig"):
-                        for page1 in doc.Root.Pages.Kids:
-                            try:
-                                for annot1 in page1.Annots:
-                                    try:
-                                        if(annot0 != annot1 and str(annot1.V.Type) != "Sig"):
-                                            rect1 = str(annot1.Rect)
-                                            rect1 = rect1.replace('[', '')
-                                            rect1 = rect1.replace(']', '')
-                                            rect1 = rect1.replace(',', '')
-                                            rect1 = rect1.replace("'", '')
-                                            value1 = str(annot1.V)
-                                            #Extract coordinates (figure)
-                                            coordinates_b = rect1.split(" ")
-
-                                            #Set points for rectangle a
-                                            b_left = float(coordinates_b[0])
-                                            b_bottom = float(coordinates_b[1])
-                                            b_right = float(coordinates_b[2])
-                                            b_top = float(coordinates_b[3])
-
-                                            #Calculate surface area for rectangle b
-                                            b_S = (b_right - b_left) * (b_top - b_bottom)
-
-                                            #Calculate overlap
-                                            a_b_I = max(0, min(a_right, b_right) - max(a_left, b_left)) * max(0, min(a_top, b_top) - max(a_bottom, b_bottom))
-
-                                            #Caluculate ratio r
-                                            r = a_b_I / b_S
-
-                                            #Calculate overlap in percentage p
-                                            p = round((r*100), 2)
-
-                                            if not(str(annot1) in double_check):
-                                                if (p > 0 and p < 100):
-                                                    warnings += 1
-                                                    print('WARNING! form: "' + value0 + '" and ' + value1 + ' overlaps each other to: ' + str(p) + ' percent')
-                                                if (p >= 100):
-                                                    warnings += 1
-                                                    print('WARNING! form: "' + value0 + '" and ' + value1 + ' overlaps each other completely')
-                                    except:
-                                        pass
-                            except:
-                                pass
-                except:
-                    pass
-        except:
-            pass
-
-    return warnings;
-
 def compare_files_detection_replace_value(document0, document1):
     warnings = 0
 
@@ -1140,16 +1057,18 @@ def decompress_file(document):
 
 def detector(document):
     print("Start Detection-Mode.")
+    warnings_detection_all = 0
+
     #Call detector for category Hide and Hide-and-Replace
     warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
-
+    
     #Call detector for category Hide (form)
     warnings_dec_hide_form = shadow_hide_form_detector(document)
-
+    
     #Call detector for category Replace
     warnings_dec_replace_font = shadow_replace_font_detector(document)
     warnings_dec_replace_form = shadow_replace_form_detector(document)
-
+    
     warnings_detection_all = warnings_dec_replace_font + warnings_dec_replace_form + warnings_dec_hide_and_replace + warnings_dec_hide_form
     if (warnings_detection_all == 0):
         print('Check complete: no active Shadow Attacks detected.')
@@ -1160,6 +1079,8 @@ def detector(document):
 
 def preventor(document):
     print("Start Prevention-Mode.")
+    warnings_prevention_all = 0
+
     #Call preventor for category Hide
     warnings_pre_hide = shadow_hide_preventor(document)
     if(warnings_pre_hide == 0):
@@ -1180,23 +1101,9 @@ def preventor(document):
 
     return warnings_prevention_all;
 
-
-#Start
-print("*****Start*****\n")
-#Check arguments
-if(len(sys.argv) < 2):
-    print("Please pass the PDF file to be checked as argument!")
-    print("\n*****End*****")
-elif not(str(sys.argv[1]).endswith('.pdf')):
-    print("Please pass only PDF files!")
-    print("\n*****End*****")
-elif not(os.path.exists(sys.argv[1])):
-    print("Wrong file path!")
-    print("\n*****End*****")
-else:
-    document = str(sys.argv[1])
-
+def start_preventor_detector(document):
     #show_elements(document)
+    warnings = 0
 
     if(check_sig_state(document) > 0):
         #Detector
@@ -1224,12 +1131,75 @@ else:
         except:
             print("Error in Prevention process!")
 
-    print("\n*****End*****")
-    if(warnings == 0):
-        print("No Shadow Attacks were found.")
-    else:
-        print("WARNING! A total of " + str(warnings) + " Shadow Attack(s) were found!")
+    return warnings;
 
+def start_directory_search(path):
+    warnings = 0
+    file_counter = 0
+    malicious_files = []
+    malicious_file_numbers = []
+    for root, dirs, files in os.walk(path):
+        for file_name in files:
+            if(file_name.lower().endswith('.pdf')):
+                file_counter += 1
+                file_name = os.path.join(root, file_name)
+                print("*****Start analysis for PDF file #" + str(file_counter) + "*****")
+                print("Current file: " + file_name)
+                warnings_round = 0
+                warnings_round = start_preventor_detector(file_name)
+                if(warnings_round > 0):
+                    malicious_files.append(file_name)
+                    malicious_file_numbers.append(file_counter)
+                warnings = warnings + warnings_round
+                print("*****End of analysis for this file.*****\n")
+
+    return [warnings, file_counter, malicious_files, malicious_file_numbers];
+
+def main():
+    #Start
+    print("*****Start PDF-Detector*****\n")
+    warnings = 0
+    file_counter = 1
+    #Check arguments
+    if(len(sys.argv) < 2):
+        print("Please pass the PDF file or directory to be checked as argument!")
+        print("\n*****End*****")
+    elif not(os.path.exists(sys.argv[1])):
+        print("Wrong file path!")
+        print("\n*****End*****")
+    elif str(sys.argv[1]).endswith('.pdf'):
+        document = str(sys.argv[1])
+        warnings = start_preventor_detector(document)
+        malicious_files = [document]
+        malicious_file_numbers = [file_counter]
+    else:
+        path = str(sys.argv[1])
+        array = start_directory_search(path)
+        warnings = array[0]
+        file_counter = array[1]
+        malicious_files = array[2]
+        malicious_file_numbers = array[3]
+
+    print("\n*****End*****\n")
+    if(file_counter < 1):
+        print("No PDF file found in directory or subdirectory.")
+    else:
+        print("Checked PDF files: " + str(file_counter))
+
+    if(warnings == 0):
+        print("Malicious PDF files: 0")
+        print("\nNo Shadow Attacks were found.")
+    else:
+        print("Malicious PDF files: " + str(len(malicious_files)))
+        print("Malicious PDF file names:")
+        i = 0
+        for file_name in malicious_files:
+            print("File #" + str(malicious_file_numbers[i]) + ": " + file_name)
+            i += 1
+        print("\nWARNING! A total of " + str(warnings) + " Shadow Attack(s) were found!")
+        
+if __name__ == "__main__":
+    main()
 
 
 
