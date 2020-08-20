@@ -90,7 +90,7 @@ def shadow_hide_preventor(document):
                             warnings += 1
                             print('WARNING! element: "' + figure_name + '" overlaps completely the following content: ' + text_content)
     file.close()
-    return warnings;
+    return warnings
 
 def shadow_hide_preventor_v2(document):
 
@@ -179,7 +179,7 @@ def shadow_hide_preventor_v2(document):
             pass
 
     file.close()
-    return warnings;
+    return warnings
 
 def shadow_hide_preventor_v3(document):
 
@@ -263,7 +263,7 @@ def shadow_hide_preventor_v3(document):
         except:
             pass
 
-    return warnings;
+    return warnings
 
 def shadow_hide_preventor_form(document):
     warnings = 0
@@ -298,7 +298,7 @@ def shadow_hide_preventor_form(document):
         if os.path.exists(doc_path):
             os.remove(doc_path)
 
-    return warnings;
+    return warnings
 
 def shadow_hide_replace_preventor(document):
     warnings = 0
@@ -327,7 +327,7 @@ def shadow_hide_replace_preventor(document):
                 break
     else:
         print("Error: no Pages object found.")
-        return warnings;
+        return warnings
 
     #Get byte value of endobj of Pages object
     #Get content of Pages object
@@ -385,7 +385,7 @@ def shadow_hide_replace_preventor(document):
                 j+=1
         i+=1
 
-    return warnings;
+    return warnings
 
 def shadow_hide_form_detector(document):
     warnings = 0
@@ -396,14 +396,14 @@ def shadow_hide_form_detector(document):
     content = content_encoded.decode("iso-8859-1")
     content_str = str(content)
     content_str_lower = content_str.lower()
-    
+
     #Get byte value of first signature
     tmp = content_str_lower.find("/type/sig")
     if (tmp > 0):
         index_of_first_sig = tmp
     else:
         index_of_first_sig = content_str_lower.find("/type /sig")
-   
+
     #Get byte value of EOFs.
     i = 0
     index_of_eof = [content_str.find("%%EOF")+6]
@@ -418,8 +418,8 @@ def shadow_hide_form_detector(document):
 
     if (i == 0):
         print("Error while capturing the EOF byte values!")
-        return warnings;
- 
+        return warnings
+
     #Get byte value of signature-EOF
     index_of_sig_eof = 0
     i = 0
@@ -428,7 +428,7 @@ def shadow_hide_form_detector(document):
             index_of_sig_eof = index_of_eof[i-1]
             break
         i+=1
-    
+
     #Remove incremental updates
     if(len(content_str) >= index_of_eof[-1]):
         content_str_no_updates = content_str[0: index_of_sig_eof:] + content_str[index_of_eof[-1] + 1::]
@@ -452,7 +452,7 @@ def shadow_hide_form_detector(document):
         warnings = shadow_hide_preventor(document)
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
-    return warnings;
+    return warnings
 
 def shadow_hide_and_hide_replace_detector(document):
     warnings = 0
@@ -485,7 +485,7 @@ def shadow_hide_and_hide_replace_detector(document):
 
     if (i == 0):
         print("Error while capturing the EOF byte values!")
-        return warnings;
+        return warnings
 
     #Get byte value of signature-EOF
     index_of_sig_eof = 0
@@ -514,7 +514,7 @@ def shadow_hide_and_hide_replace_detector(document):
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
 
-    return warnings;
+    return warnings
 
 def shadow_replace_font_detector(document):
     warnings = 0
@@ -546,7 +546,7 @@ def shadow_replace_font_detector(document):
 
     if (i == 0):
         print("Error while capturing the EOF byte values!")
-        return warnings;
+        return warnings
 
     #Get byte value EOF after signature
     index_of_sig_eof = 0
@@ -572,7 +572,7 @@ def shadow_replace_font_detector(document):
                 break
 
     if (index_of_fontfile[0] < 0):
-        return warnings;
+        return warnings
 
     #Get FontFile Object Number
     object_number_fontfile = []
@@ -587,7 +587,7 @@ def shadow_replace_font_detector(document):
             print('WARNING! FontFile: ' + str(object_number)+' 0 obj was added after signing!')
             warnings += 1
 
-    return warnings;
+    return warnings
 
 def shadow_replace_form_detector(document):
     warnings = 0
@@ -620,7 +620,7 @@ def shadow_replace_form_detector(document):
 
     if (i == 0):
         print("Error while capturing the EOF byte values!")
-        return warnings;
+        return warnings
 
     #Get byte value of signature-EOF
     index_of_sig_eof = 0
@@ -647,7 +647,7 @@ def shadow_replace_form_detector(document):
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
 
-    return warnings;
+    return warnings
 
 def compare_files(document0, document1):
     warnings = 0
@@ -727,7 +727,7 @@ def compare_files(document0, document1):
 
     file0.close()
     file1.close()
-    return warnings;
+    return warnings
 
 def compare_files_prevent(document0, document1):
     warnings = 0
@@ -772,7 +772,7 @@ def compare_files_prevent(document0, document1):
 
     file0.close()
     file1.close()
-    return warnings;
+    return warnings
 
 def compare_files_detection_hide_overlay(document0, document1):
     warnings = 0
@@ -833,7 +833,7 @@ def compare_files_detection_hide_overlay(document0, document1):
         if os.path.exists(doc1_path):
             os.remove(doc1_path)
 
-    return warnings;
+    return warnings
 
 def compare_files_detection_hide_overlay_v2(document0, document1):
     warnings = 0
@@ -886,7 +886,7 @@ def compare_files_detection_hide_overlay_v2(document0, document1):
         if os.path.exists(doc1_path):
             os.remove(doc1_path)
 
-    return warnings;
+    return warnings
 
 def compare_files_detection_replace_value(document0, document1):
     warnings = 0
@@ -951,7 +951,7 @@ def compare_files_detection_replace_value(document0, document1):
         if os.path.exists(doc1_path):
             os.remove(doc1_path)
 
-    return warnings;
+    return warnings
 
 def check_sig_state(document):
     sig_state = 0
@@ -998,7 +998,7 @@ def remove_sig_and_updates(document):
 
     if (i == 0):
         print("Error while capturing the EOF byte values!")
-        return warnings;
+        return warnings
 
     #Get byte value of signature-EOF
     index_of_sig_eof = 0
@@ -1021,7 +1021,7 @@ def remove_sig_and_updates(document):
     tmpfile.write(content_encoded)
     tmpfile.close()
 
-    return tmpfile_str;
+    return tmpfile_str
 
 def show_elements(document):
     warnings = 0
@@ -1043,7 +1043,7 @@ def show_elements(document):
     print(text)
 
 
-    return warnings;
+    return warnings
 
 def decompress_file(document):
     rand = str(randint(1, 9999))
@@ -1051,9 +1051,9 @@ def decompress_file(document):
     try:
         tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
         pypdftk.uncompress(document, tmpfile_str)
-        return tmpfile_str;
+        return tmpfile_str
     except:
-        return document;
+        return document
 
 def detector(document):
     print("Start Detection-Mode.")
@@ -1061,21 +1061,21 @@ def detector(document):
 
     #Call detector for category Hide and Hide-and-Replace
     warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
-    
+
     #Call detector for category Hide (form)
     warnings_dec_hide_form = shadow_hide_form_detector(document)
-    
+
     #Call detector for category Replace
     warnings_dec_replace_font = shadow_replace_font_detector(document)
     warnings_dec_replace_form = shadow_replace_form_detector(document)
-    
+
     warnings_detection_all = warnings_dec_replace_font + warnings_dec_replace_form + warnings_dec_hide_and_replace + warnings_dec_hide_form
     if (warnings_detection_all == 0):
         print('Check complete: no active Shadow Attacks detected.')
     else:
         print('\nCheck complete: WARNING! ' + str(warnings_detection_all) + ' active Shadow Attack(s) detected.')
 
-    return warnings_detection_all;
+    return warnings_detection_all
 
 def preventor(document):
     print("Start Prevention-Mode.")
@@ -1099,7 +1099,7 @@ def preventor(document):
     else:
         print('\nCheck complete: WARNING! ' + str(warnings_prevention_all) + ' inactive Shadow Attack(s) detected.')
 
-    return warnings_prevention_all;
+    return warnings_prevention_all
 
 def start_preventor_detector(document):
     #show_elements(document)
@@ -1131,7 +1131,7 @@ def start_preventor_detector(document):
         except:
             print("Error in Prevention process!")
 
-    return warnings;
+    return warnings
 
 def start_directory_search(path):
     warnings = 0
@@ -1153,7 +1153,7 @@ def start_directory_search(path):
                 warnings = warnings + warnings_round
                 print("*****End of analysis for this file.*****\n")
 
-    return [warnings, file_counter, malicious_files, malicious_file_numbers];
+    return [warnings, file_counter, malicious_files, malicious_file_numbers]
 
 def main():
     #Start
@@ -1197,7 +1197,7 @@ def main():
             print("File #" + str(malicious_file_numbers[i]) + ": " + file_name)
             i += 1
         print("\nWARNING! A total of " + str(warnings) + " Shadow Attack(s) were found!")
-        
+
 if __name__ == "__main__":
     main()
 
