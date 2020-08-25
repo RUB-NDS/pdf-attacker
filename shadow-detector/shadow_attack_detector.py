@@ -970,6 +970,7 @@ def check_sig_state(document):
     return sig_state
 
 def remove_sig_and_updates(document):
+    warnings = 0
     file = open(document, 'rb')
     content_encoded = file.read()
     file.close()
