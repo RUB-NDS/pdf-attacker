@@ -7,3 +7,4 @@ pypdf4
 pypdftk
 reportlab
 wand
+PyMuPDF
