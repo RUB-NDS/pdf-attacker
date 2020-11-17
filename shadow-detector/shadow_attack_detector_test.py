@@ -9,7 +9,7 @@ class Test_ShadowAttackDetector(unittest.TestCase):
     def test_shadow_hide_variant_1(self):
         self.assertEqual(preventor("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/2_original-document-shadowed.pdf"), 1)
         self.assertEqual(preventor("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/3_original-document-shadowed-signed.pdf"), 1)
-        self.assertEqual(preventor("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/4_original-document-shadowed-signed-manipulated_v1.pdf"), 1)
+        self.assertEqual(shadow_hide_and_hide_replace_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/4_original-document-shadowed-signed-manipulated_v1.pdf"), 1)
         self.assertEqual(shadow_hide_and_hide_replace_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/4_original-document-shadowed-signed-manipulated_v2.pdf"), 1)
 
     def test_shadow_hide_variant_2(self):
@@ -55,15 +55,15 @@ class Test_ShadowAttackDetectorIntegration(unittest.TestCase):
         self.assertEqual(start_preventor_detector("./shadow-demo-exploits/replace/variant-1_replace-via-overlay/1_original-document.pdf"), 0)
 
     def test_start_preventor_detector_with_hide_variant_1(self):
+        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/2_original-document-shadowed.pdf"), 0)
+        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/3_original-document-shadowed-signed.pdf"), 0)
         self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/4_original-document-shadowed-signed-manipulated_v1.pdf"), 0)
         self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/4_original-document-shadowed-signed-manipulated_v2.pdf"), 0)
-        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/3_original-document-shadowed-signed.pdf"), 0)
-        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-1_hide-via-referenced-object/2_original-document-shadowed.pdf"), 0)
 
     def test_start_preventor_detector_with_hide_variant_2_form(self):
-        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-2_hide-via-referenced-object/hide-form-via-form/4_original-document-shadowed-signed-manipulated.pdf"), 0)
-        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-2_hide-via-referenced-object/hide-form-via-form/3_original-document-shadowed-signed.pdf"), 0)
         self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-2_hide-via-referenced-object/hide-form-via-form/2_original-document-shadowed.pdf"), 0)
+        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-2_hide-via-referenced-object/hide-form-via-form/3_original-document-shadowed-signed.pdf"), 0)
+        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-2_hide-via-referenced-object/hide-form-via-form/4_original-document-shadowed-signed-manipulated.pdf"), 0)
 
     def test_start_preventor_detector_with_hide_variant_2_text(self):
         self.assertGreater(start_preventor_detector("./shadow-demo-exploits/hide/variant-2_hide-via-referenced-object/hide-text-via-form/2_original-document-shadowed.pdf"), 0)
@@ -76,8 +76,8 @@ class Test_ShadowAttackDetectorIntegration(unittest.TestCase):
         self.assertGreater(start_preventor_detector("./shadow-demo-exploits/replace/variant-1_replace-via-overlay/4_original-document-shadowed-signed-manipulated.pdf"), 0)
 
     def test_start_preventor_detector_with_replace_variant_2(self):
-        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/replace/variant-2_replace-via-overwrite/2_original-document-shadowed.pdf"), 0)
-        self.assertGreater(start_preventor_detector("./shadow-demo-exploits/replace/variant-2_replace-via-overwrite/3_original-document-shadowed-signed.pdf"), 0)
+        self.assertEquals(start_preventor_detector("./shadow-demo-exploits/replace/variant-2_replace-via-overwrite/2_original-document-shadowed.pdf"), 0) # This case is not detectable
+        self.assertEquals(start_preventor_detector("./shadow-demo-exploits/replace/variant-2_replace-via-overwrite/3_original-document-shadowed-signed.pdf"), 0) # This case is not detectable
         self.assertGreater(start_preventor_detector("./shadow-demo-exploits/replace/variant-2_replace-via-overwrite/4_original-document-shadowed-signed-manipulated.pdf"), 0)
 
     def test_start_preventor_detector_with_hide_and_replace_variant_1(self):
