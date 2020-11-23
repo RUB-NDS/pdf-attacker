@@ -140,11 +140,11 @@ dmypy.json
 Thumbs.db
 # *.pdf
 .vscode/settings.json
-1_original-document.pdf
-1_original-document.png
-2_original-document-shadowed.pdf
-3_original-document-shadowed-signed.pdf
-4_original-document-shadowed-signed-manipulated.pdf
-4_original-document-shadowed-signed-manipulated_v1.pdf
-4_original-document-shadowed-signed-manipulated_v2.pdf
+shadow-attack/**/1_original-document.pdf
+shadow-attack/**/1_original-document.png
+shadow-attack/**/2_original-document-shadowed.pdf
+shadow-attack/**/3_original-document-shadowed-signed.pdf
+shadow-attack/**/4_original-document-shadowed-signed-manipulated.pdf
+shadow-attack/**/4_original-document-shadowed-signed-manipulated_v1.pdf
+shadow-attack/**/4_original-document-shadowed-signed-manipulated_v2.pdf
 tmpfile_*.pdf
