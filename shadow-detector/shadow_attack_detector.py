@@ -6,6 +6,7 @@ import re
 
 import pypdftk
 
+from pikepdf import Pdf, Page, Stream
 
 from pdfminer.layout import LAParams
 from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
@@ -102,7 +103,10 @@ def shadow_hide_preventor_v2(document):
     except:
         doc_path = decompress_file(document)
         doc = PdfReader(doc_path)
-        check = 1
+        if (doc_path == document):
+            check = 0
+        else:
+            check = 1
 
     file = open(document, 'rb')
 
@@ -179,6 +183,11 @@ def shadow_hide_preventor_v2(document):
             pass
 
     file.close()
+
+    if(check == 1):
+        if os.path.exists(doc_path):
+            os.remove(doc_path)
+
     return warnings
 
 def shadow_hide_preventor_v3(document):
@@ -191,7 +200,10 @@ def shadow_hide_preventor_v3(document):
     except:
         doc_path = decompress_file(document)
         doc = PdfReader(doc_path)
-        check = 1
+        if (doc_path == document):
+            check = 0
+        else:
+            check = 1
 
     #Search for forms in pdf
     double_check = []
@@ -263,6 +275,78 @@ def shadow_hide_preventor_v3(document):
         except:
             pass
 
+    if(check == 1):
+        if os.path.exists(doc_path):
+            os.remove(doc_path)
+
+    return warnings
+
+def shadow_hide_preventor_v4(document):
+    warnings = 0
+
+    file = open(document, 'rb')
+    content_encoded = file.read()
+    file.close()
+    content = content_encoded.decode("iso-8859-1")
+    content_str = str(content)
+    content_str_lower = content_str.lower()
+
+    #find xref table and remove "startxref"
+    index_of_xref = content_str_lower.rfind("startxref")
+    content_str_replaced = content_str[:index_of_xref] + content_str[index_of_xref+9:]
+    content_encoded = content_str_replaced.encode("iso-8859-1")
+
+    #Create test file
+    rand = str(randint(1, 9999))
+    tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
+    tmpfile = open(tmpfile_str, "xb")
+    tmpfile.write(content_encoded)
+    tmpfile.close()
+
+    try:
+        doc0 = PdfReader(document)
+        doc_path1 = prepare_file(tmpfile_str)
+        doc1 = PdfReader(doc_path1)
+        if (doc_path1 == tmpfile_str):
+            check = 0
+        else:
+            check = 1
+    except Exception as e:
+        print(e)
+
+    #Search for forms in pdf
+    for page1 in doc1.Root.Pages.Kids:
+        try:
+            for annot1 in page1.Annots:
+                try:
+                    annot1_str = str(annot1.V)
+                    
+                    found = 0
+                    for page0 in doc0.Root.Pages.Kids:
+                        try:
+                            for annot0 in page0.Annots:
+                                try:
+                                    annot0_str = str(annot0.V)
+                                    if (annot0_str == annot1_str):
+                                        found = 1
+                                except:
+                                    pass
+                        except:
+                            pass
+                    if (found == 0):
+                        print('WARNING! Document contains hidden content: ' + annot1_str)
+                        warnings+=1 
+                except:
+                    pass
+        except:
+            pass
+
+    if os.path.exists(tmpfile_str):
+        os.remove(tmpfile_str)
+    if(check == 1):
+        if os.path.exists(doc_path1):
+            os.remove(doc_path1)
+
     return warnings
 
 def shadow_hide_preventor_form(document):
@@ -275,8 +359,11 @@ def shadow_hide_preventor_form(document):
     except:
         doc_path = decompress_file(document)
         doc = PdfReader(doc_path)
-        check = 1
-
+        if (doc_path == document):
+            check = 0
+        else:
+            check = 1
+        
     for page in doc.Root.Pages.Kids:
         try:
             for annot in page.Annots:
@@ -288,7 +375,7 @@ def shadow_hide_preventor_form(document):
                     value1 = tmp[index_value1_start:index_value1_end+1]
                 except:
                     break
-                if(value0 != value1):
+                if(value0 != value1 and value1 != ""):
                     print('WARNING! Form text: "' + value0 + '" overlayed by text: "' + value1 + '"')
                     warnings+=1
         except:
@@ -373,7 +460,8 @@ def shadow_hide_replace_preventor(document):
                         content_encoded = content_str_replaced.encode("iso-8859-1")
 
                         #Create test file
-                        tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + ".pdf"
+                        rand = str(randint(1, 9999))
+                        tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
                         tmpfile = open(tmpfile_str, "xb")
                         tmpfile.write(content_encoded)
                         tmpfile.close()
@@ -417,7 +505,6 @@ def shadow_hide_form_detector(document):
                 break
 
     if (i == 0):
-        print("Error while capturing the EOF byte values!")
         return warnings
 
     #Get byte value of signature-EOF
@@ -444,7 +531,7 @@ def shadow_hide_form_detector(document):
     tmpfile.close()
 
 
-
+    
     warnings = compare_files_detection_hide_overlay(document, tmpfile_str)
     if(warnings == 0):
         warnings = compare_files_detection_hide_overlay_v2(document, tmpfile_str)
@@ -484,7 +571,6 @@ def shadow_hide_and_hide_replace_detector(document):
                 break
 
     if (i == 0):
-        print("Error while capturing the EOF byte values!")
         return warnings
 
     #Get byte value of signature-EOF
@@ -511,6 +597,8 @@ def shadow_hide_and_hide_replace_detector(document):
 
 
     warnings = compare_files(document, tmpfile_str)
+    if(warnings == 0):
+        warnings = compare_files_detection_hide_replace(document, tmpfile_str)
     if os.path.exists(tmpfile_str):
         os.remove(tmpfile_str)
 
@@ -545,7 +633,6 @@ def shadow_replace_font_detector(document):
                 break
 
     if (i == 0):
-        print("Error while capturing the EOF byte values!")
         return warnings
 
     #Get byte value EOF after signature
@@ -619,7 +706,6 @@ def shadow_replace_form_detector(document):
                 break
 
     if (i == 0):
-        print("Error while capturing the EOF byte values!")
         return warnings
 
     #Get byte value of signature-EOF
@@ -772,6 +858,52 @@ def compare_files_prevent(document0, document1):
 
     file0.close()
     file1.close()
+    return warnings
+
+def compare_files_detection_hide_replace(document0, document1):
+    warnings = 0
+
+    try:
+        doc0 = PdfReader(document0)
+        doc_path1 = prepare_file(document1)
+        doc1 = PdfReader(doc_path1)
+        if (doc_path1 == document1):
+            check = 0
+        else:
+            check = 1
+    except Exception as e:
+        print(e)
+
+    #Search for forms in pdf
+    for page0 in doc0.Root.Pages.Kids:
+        try:
+            for annot0 in page0.Annots:
+                try:
+                    annot0_str = str(annot0.V)
+                    annot0_type = str(annot0.FT)
+                    found = 0
+                    for page1 in doc1.Root.Pages.Kids:
+                        try:
+                            for annot1 in page1.Annots:
+                                try:
+                                    annot1_str = str(annot1.V)
+                                    if (annot0_str == annot1_str or annot0_type.lower() == "/sig"):
+                                        found = 1
+                                except:
+                                    pass
+                        except:
+                            pass
+                    if (found == 0):
+                        print('WARNING! Form text: "' + annot1_str + '" was removed after signing!')
+                        warnings+=1 
+                except:
+                    pass
+        except:
+            pass
+    if(check == 1):
+        if os.path.exists(doc_path1):
+            os.remove(doc_path1)
+
     return warnings
 
 def compare_files_detection_hide_overlay(document0, document1):
@@ -998,7 +1130,6 @@ def remove_sig_and_updates(document):
                 break
 
     if (i == 0):
-        print("Error while capturing the EOF byte values!")
         return warnings
 
     #Get byte value of signature-EOF
@@ -1056,21 +1187,50 @@ def decompress_file(document):
     except:
         return document
 
+def prepare_file(document):
+    rand = str(randint(1, 9999))
+
+    try:
+        tmpfile_str = "tmpfile_" + time.strftime("%Y-%m-%d_%H-%M-%S") + rand + ".pdf"
+        with Pdf.open(document) as pdf:
+            pdf.save(tmpfile_str, compress_streams=False)
+        return tmpfile_str
+    except:
+        return document
+
 def detector(document):
     print("Start Detection-Mode.")
     warnings_detection_all = 0
+    warnings_dec_hide_form = 0
+    warnings_dec_replace_form = 0
 
-    #Call detector for category Hide and Hide-and-Replace
-    warnings_dec_hide_and_replace = shadow_hide_and_hide_replace_detector(document)
+    #Call detector
+    warnings_dec = shadow_replace_font_detector(document)
+    if (warnings_dec == 0):
+        warnings_dec = shadow_hide_and_hide_replace_detector(document)
+        warnings_dec_hide_form = shadow_hide_form_detector(document)
+        warnings_dec_replace_form = shadow_replace_form_detector(document)
 
-    #Call detector for category Hide (form)
-    warnings_dec_hide_form = shadow_hide_form_detector(document)
+    warnings_detection_all = warnings_dec + warnings_dec_replace_form + warnings_dec_hide_form
 
-    #Call detector for category Replace
-    warnings_dec_replace_font = shadow_replace_font_detector(document)
-    warnings_dec_replace_form = shadow_replace_form_detector(document)
 
-    warnings_detection_all = warnings_dec_replace_font + warnings_dec_replace_form + warnings_dec_hide_and_replace + warnings_dec_hide_form
+    #Prepare PDF and test again
+    if (warnings_detection_all == 0):
+        prepared_doc = prepare_file(document)
+        warnings_dec = shadow_replace_font_detector(prepared_doc)
+        if (warnings_dec == 0):
+            warnings_dec = shadow_hide_and_hide_replace_detector(prepared_doc)
+            warnings_dec_hide_form = shadow_hide_form_detector(prepared_doc)
+            warnings_dec_replace_form = shadow_replace_form_detector(prepared_doc)
+
+        warnings_detection_all = warnings_dec + warnings_dec_replace_form + warnings_dec_hide_form
+
+        if (prepared_doc != document):
+            if os.path.exists(prepared_doc):
+                os.remove(prepared_doc)
+
+    
+    
     if (warnings_detection_all == 0):
         print('Check complete: no active Shadow Attacks detected.')
     else:
@@ -1081,20 +1241,46 @@ def detector(document):
 def preventor(document):
     print("Start Prevention-Mode.")
     warnings_prevention_all = 0
-
+    
     #Call preventor for category Hide
     warnings_pre_hide = shadow_hide_preventor(document)
     if(warnings_pre_hide == 0):
         warnings_pre_hide = shadow_hide_preventor_v2(document)
     if(warnings_pre_hide == 0):
         warnings_pre_hide = shadow_hide_preventor_v3(document)
-
-    warnings_pre_hide_form = shadow_hide_preventor_form(document)
+    if(warnings_pre_hide == 0):
+        warnings_pre_hide = shadow_hide_preventor_form(document)
+    if(warnings_pre_hide == 0):
+        warnings_pre_hide = shadow_hide_preventor_v4(document)
 
     #Call preventor for category Hide-and-Replace
     warnings_pre_hide_replace = shadow_hide_replace_preventor(document)
 
-    warnings_prevention_all =  warnings_pre_hide_replace + warnings_pre_hide + warnings_pre_hide_form
+    warnings_prevention_all =  warnings_pre_hide_replace + warnings_pre_hide
+
+    #Prepare PDF and test again
+    if (warnings_prevention_all == 0):
+        prepared_doc = prepare_file(document)
+        
+        warnings_pre_hide = shadow_hide_preventor(prepared_doc)
+        if(warnings_pre_hide == 0):
+            warnings_pre_hide = shadow_hide_preventor_v2(prepared_doc)
+        if(warnings_pre_hide == 0):
+            warnings_pre_hide = shadow_hide_preventor_v3(prepared_doc)
+        if(warnings_pre_hide == 0):
+            warnings_pre_hide = shadow_hide_preventor_form(prepared_doc)
+        if(warnings_pre_hide == 0):
+            warnings_pre_hide = shadow_hide_preventor_v4(document)
+
+        #Call preventor for category Hide-and-Replace
+        warnings_pre_hide_replace = shadow_hide_replace_preventor(prepared_doc)
+
+        warnings_prevention_all =  warnings_pre_hide_replace + warnings_pre_hide
+
+        if (prepared_doc != document):
+            if os.path.exists(prepared_doc):
+                os.remove(prepared_doc)
+
     if (warnings_prevention_all == 0):
         print('Check complete: no inactive Shadow Attacks detected.')
     else:
