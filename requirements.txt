@@ -3,6 +3,7 @@ fpdf
 notebook
 pdfminer
 pdfrw
+pikepdf
 pypdf4
 pypdftk
 reportlab
