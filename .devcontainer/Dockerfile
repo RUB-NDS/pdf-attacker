@@ -29,7 +29,7 @@ RUN mkdir -p ${PIP_TARGET} \
 #
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update \
-   && apt-get -y install --no-install-recommends ghostscript libmagick++-6.q16-dev swig pdftk \
+   && apt-get -y install --no-install-recommends ghostscript libmagick++-6.q16-dev swig pdftk openjdk-11-jre libxext6 libxrender1 libxtst6 libxi6 libx11-6 fontconfig \
    #
    # Clean up
    && apt-get autoremove -y \

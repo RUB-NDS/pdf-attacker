@@ -4,8 +4,8 @@ notebook
 pdfminer
 pdfrw
 pikepdf
-pypdf4
+pypdf4==1.27.0
 pypdftk
 reportlab
 wand
-PyMuPDF
+PyMuPDF==1.19.0
